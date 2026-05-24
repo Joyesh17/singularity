@@ -2,6 +2,7 @@
 
 import SignalCard from "./SignalCard";
 import RecommendationBox from "./RecommendationBox";
+import DownloadReportButton from "./DownloadReportButton";
 
 interface Signal {
   name: string;
@@ -30,8 +31,10 @@ export default function ResultCard({ result }: ResultCardProps) {
     switch (result.risk_level) {
       case "Suspicious":
         return "bg-yellow-500/20 text-yellow-300";
+
       case "High Risk":
         return "bg-red-500/20 text-red-300";
+
       default:
         return "bg-green-500/20 text-green-300";
     }
@@ -42,7 +45,9 @@ export default function ResultCard({ result }: ResultCardProps) {
       {/* Top Score Section */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <p className="text-sm text-gray-400 mb-2">Authenticity Score</p>
+          <p className="text-sm text-gray-400 mb-2">
+            Authenticity Score
+          </p>
 
           <h2 className="text-5xl font-bold text-cyan-300">
             {result.authenticity_score}/100
@@ -69,7 +74,9 @@ export default function ResultCard({ result }: ResultCardProps) {
         <div className="flex justify-between border-b border-white/10 pb-3">
           <span>Content Type</span>
 
-          <span className="text-white font-medium">{result.content_type}</span>
+          <span className="text-white font-medium">
+            {result.content_type}
+          </span>
         </div>
 
         <div className="flex justify-between border-b border-white/10 pb-3">
@@ -83,18 +90,25 @@ export default function ResultCard({ result }: ResultCardProps) {
         <div className="flex justify-between border-b border-white/10 pb-3">
           <span>Model Version</span>
 
-          <span className="text-white font-medium">{result.model_version}</span>
+          <span className="text-white font-medium">
+            {result.model_version}
+          </span>
         </div>
       </div>
 
       {/* Detected Signals */}
       {result.signals && result.signals.length > 0 && (
         <div className="mt-10">
-          <h3 className="text-2xl font-semibold mb-5">Detected Signals</h3>
+          <h3 className="text-2xl font-semibold mb-5">
+            Detected Signals
+          </h3>
 
           <div className="space-y-4">
             {result.signals.map((signal, index) => (
-              <SignalCard key={index} signal={signal} />
+              <SignalCard
+                key={index}
+                signal={signal}
+              />
             ))}
           </div>
         </div>
@@ -102,6 +116,9 @@ export default function ResultCard({ result }: ResultCardProps) {
 
       {/* Recommendation */}
       <RecommendationBox />
+
+      {/* Download Report */}
+      <DownloadReportButton result={result} />
     </div>
   );
 }
