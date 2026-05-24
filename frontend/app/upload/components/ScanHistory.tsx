@@ -39,7 +39,7 @@ export default function ScanHistory({
         {history.map((item, index) => (
           <div
             key={index}
-            className="rounded-2xl border border-white/10 bg-white/[0.04] p-5"
+            className="rounded-2xl border border-white/10 bg-white/4 p-5"
           >
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-medium text-white">
