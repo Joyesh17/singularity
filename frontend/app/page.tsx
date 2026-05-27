@@ -1,49 +1,278 @@
+// #Start
 import Link from "next/link";
 
-export default function HomePage() {
+export const dynamic = "force-dynamic";
+
+type DemoResult = {
+  label: string;
+  prediction: "REAL" | "FAKE";
+  confidence: number;
+  realProbability: number;
+  fakeProbability: number;
+  badge: string;
+  badgeClass: string;
+  predictionClass: string;
+  progressClass: string;
+  explanation: string;
+  signals: {
+    title: string;
+    value: string;
+  }[];
+};
+
+const demoResults: DemoResult[] = [
+  {
+    label: "Landscape Image Scan",
+    prediction: "FAKE",
+    confidence: 98,
+    realProbability: 2,
+    fakeProbability: 98,
+    badge: "High Confidence",
+    badgeClass: "bg-red-500/20 text-red-300 border border-red-400/20",
+    predictionClass: "text-red-400",
+    progressClass: "bg-red-400",
+    explanation:
+      "Grad-CAM focuses on sky gradients, lighting transitions, and texture regions that influenced the fake prediction.",
+    signals: [
+      {
+        title: "AI Image Probability",
+        value: "98%",
+      },
+      {
+        title: "Model Confidence",
+        value: "98%",
+      },
+      {
+        title: "XAI Heatmap",
+        value: "Enabled",
+      },
+    ],
+  },
+  {
+    label: "Camera Photo Scan",
+    prediction: "REAL",
+    confidence: 97,
+    realProbability: 97,
+    fakeProbability: 3,
+    badge: "Likely Real",
+    badgeClass: "bg-green-500/20 text-green-300 border border-green-400/20",
+    predictionClass: "text-green-400",
+    progressClass: "bg-green-400",
+    explanation:
+      "The model identifies natural scene structure, photographic texture, and consistent visual details that support the real prediction.",
+    signals: [
+      {
+        title: "Real Image Probability",
+        value: "97%",
+      },
+      {
+        title: "Model Confidence",
+        value: "97%",
+      },
+      {
+        title: "XAI Heatmap",
+        value: "Enabled",
+      },
+    ],
+  },
+  {
+    label: "Suspicious Social Media Image",
+    prediction: "FAKE",
+    confidence: 91,
+    realProbability: 9,
+    fakeProbability: 91,
+    badge: "Suspicious",
+    badgeClass: "bg-yellow-500/20 text-yellow-300 border border-yellow-400/20",
+    predictionClass: "text-yellow-300",
+    progressClass: "bg-yellow-400",
+    explanation:
+      "The system detects visual patterns that may indicate AI generation and recommends manual verification before sharing.",
+    signals: [
+      {
+        title: "AI Image Probability",
+        value: "91%",
+      },
+      {
+        title: "Verification Risk",
+        value: "Medium",
+      },
+      {
+        title: "Grad-CAM",
+        value: "Available",
+      },
+    ],
+  },
+  {
+    label: "Verified Natural Image",
+    prediction: "REAL",
+    confidence: 94,
+    realProbability: 94,
+    fakeProbability: 6,
+    badge: "Low Risk",
+    badgeClass: "bg-cyan-500/20 text-cyan-300 border border-cyan-400/20",
+    predictionClass: "text-cyan-300",
+    progressClass: "bg-cyan-400",
+    explanation:
+      "The model finds stronger evidence for real image structure than AI-generated artifacts.",
+    signals: [
+      {
+        title: "Real Image Probability",
+        value: "94%",
+      },
+      {
+        title: "AI Image Probability",
+        value: "6%",
+      },
+      {
+        title: "Decision Support",
+        value: "XAI",
+      },
+    ],
+  },
+];
+
+function getRandomDemoResult() {
+  const index = Math.floor(Math.random() * demoResults.length);
+  return demoResults[index];
+}
+
+function Header() {
   return (
-    <main className="min-h-screen overflow-hidden bg-[#050A14] text-white">
-      {/* Background Glow */}
-      <div className="absolute inset-0 -z-10">
-        <div className="absolute left-1/2 top-0 h-[500px] w-[500px] -translate-x-1/2 rounded-full bg-cyan-500/10 blur-3xl" />
+    <header className="sticky top-0 z-50 border-b border-white/10 bg-[#050A14]/80 backdrop-blur-xl">
+      <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
+        <Link
+          href="/"
+          className="text-2xl font-black tracking-tight text-cyan-300"
+        >
+          Singularity
+        </Link>
 
-        <div className="absolute bottom-0 right-0 h-[400px] w-[400px] rounded-full bg-blue-500/10 blur-3xl" />
-      </div>
-
-      {/* Navbar */}
-      <header className="sticky top-0 z-50 border-b border-white/10 bg-[#050A14]/80 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
+        <nav className="hidden items-center gap-8 text-sm text-gray-300 md:flex">
           <Link
-            href="/"
-            className="text-2xl font-black tracking-tight text-cyan-300"
+            href="/docs"
+            className="transition hover:text-cyan-300"
           >
-            Singularity
+            Documentation
           </Link>
 
-          <nav className="hidden items-center gap-8 text-sm text-gray-300 md:flex">
+          <Link
+            href="/upload"
+            className="transition hover:text-cyan-300"
+          >
+            Scanner
+          </Link>
+
+          <Link
+            href="/upload#scan-history"
+            className="transition hover:text-cyan-300"
+          >
+            Result History
+          </Link>
+        </nav>
+
+        <Link
+          href="/upload"
+          className="rounded-xl bg-cyan-400 px-5 py-3 text-sm font-semibold text-black transition hover:bg-cyan-300"
+        >
+          Launch Scanner
+        </Link>
+      </div>
+    </header>
+  );
+}
+
+function Footer() {
+  const currentYear = new Date().getFullYear();
+
+  return (
+    <footer className="border-t border-white/10 bg-[#050A14] px-6 py-12">
+      <div className="mx-auto grid max-w-7xl gap-10 md:grid-cols-3">
+        <div>
+          <h3 className="mb-4 text-2xl font-black text-cyan-300">
+            Singularity
+          </h3>
+
+          <p className="max-w-md leading-7 text-gray-400">
+            An AI-powered fake image detection platform with confidence scoring
+            and Grad-CAM explainability for responsible media verification.
+          </p>
+        </div>
+
+        <div>
+          <h4 className="mb-4 font-semibold text-white">
+            Quick Links
+          </h4>
+
+          <div className="space-y-3 text-gray-400">
+            <Link
+              href="/"
+              className="block transition hover:text-cyan-300"
+            >
+              Home
+            </Link>
+
+            <Link
+              href="/upload"
+              className="block transition hover:text-cyan-300"
+            >
+              Scanner
+            </Link>
+
             <Link
               href="/docs"
-              className="transition hover:text-cyan-300"
+              className="block transition hover:text-cyan-300"
             >
               Documentation
             </Link>
 
             <Link
-              href="/upload"
-              className="transition hover:text-cyan-300"
+              href="/upload#scan-history"
+              className="block transition hover:text-cyan-300"
             >
-              Scanner
+              Result History
             </Link>
-          </nav>
-
-          <Link
-            href="/upload"
-            className="rounded-xl bg-cyan-400 px-5 py-3 text-sm font-semibold text-black transition hover:bg-cyan-300"
-          >
-            Launch App
-          </Link>
+          </div>
         </div>
-      </header>
+
+        <div>
+          <h4 className="mb-4 font-semibold text-white">
+            Project Information
+          </h4>
+
+          <div className="space-y-3 text-gray-400">
+            <p>Project: Singularity AI</p>
+            <p>MVP Version: v1 Image Detector</p>
+            <p>Contact: +880 1XXX-XXXXXX</p>
+            <p>Location: Bangladesh</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="mx-auto mt-10 flex max-w-7xl flex-col justify-between gap-4 border-t border-white/10 pt-6 text-sm text-gray-500 md:flex-row">
+        <p>
+          © {currentYear} Singularity AI. All rights reserved.
+        </p>
+
+        <p>
+          MVP v1 focuses on Stable Diffusion-style fake image detection.
+        </p>
+      </div>
+    </footer>
+  );
+}
+
+export default function HomePage() {
+  const demo = getRandomDemoResult();
+
+  return (
+    <main className="min-h-screen overflow-hidden bg-[#050A14] text-white">
+      {/* Background Glow */}
+      <div className="absolute inset-0 -z-10">
+        <div className="absolute left-1/2 top-0 h-[500px] w-[500px] -translate-x-1/2 rounded-full bg-cyan-500/10 blur-3xl" />
+        <div className="absolute bottom-0 right-0 h-[400px] w-[400px] rounded-full bg-blue-500/10 blur-3xl" />
+      </div>
+
+      <Header />
 
       {/* Hero */}
       <section className="px-6 pb-32 pt-28">
@@ -51,21 +280,21 @@ export default function HomePage() {
           {/* Left Content */}
           <div>
             <div className="mb-6 inline-flex items-center rounded-full border border-cyan-400/20 bg-cyan-400/10 px-4 py-2 text-sm text-cyan-200">
-              AI BuildFest 2026 Project
+              AI Deepfake Image Detection System
             </div>
 
             <h1 className="mb-8 text-6xl font-black leading-tight md:text-7xl">
-              Detect Deepfakes
+              Detect AI Images
               <span className="block text-cyan-300">
-                Before They Spread
+                Instantly & Explainably
               </span>
             </h1>
 
             <p className="mb-10 max-w-2xl text-lg leading-9 text-gray-300">
-              Singularity is an AI-powered media verification platform
-              designed to analyze suspicious images, videos, and audio
-              using forensic-style analysis, authenticity scoring, and
-              explainable AI signals.
+              Upload an image and determine whether it is real or AI-generated.
+              Singularity combines deep learning, probability scoring, and
+              Grad-CAM explainability to make image verification more
+              transparent.
             </p>
 
             <div className="flex flex-wrap gap-5">
@@ -73,102 +302,128 @@ export default function HomePage() {
                 href="/upload"
                 className="rounded-2xl bg-cyan-400 px-8 py-4 text-lg font-semibold text-black transition hover:bg-cyan-300"
               >
-                Start Scanning
+                Start Detection
               </Link>
 
               <Link
                 href="/docs"
                 className="rounded-2xl border border-white/10 bg-white/[0.04] px-8 py-4 text-lg font-semibold transition hover:border-cyan-400/30 hover:bg-cyan-400/10"
               >
-                Explore Docs
+                Read Documentation
               </Link>
             </div>
           </div>
 
-          {/* Dashboard Preview */}
+          {/* Right Panel */}
           <div className="relative">
             <div className="rounded-[2rem] border border-white/10 bg-white/[0.04] p-8 shadow-2xl backdrop-blur-xl">
-              {/* Score Header */}
-              <div className="mb-8 flex items-center justify-between">
+              <div className="mb-6 flex items-center justify-between">
                 <div>
-                  <p className="mb-2 text-sm text-gray-400">
-                    Authenticity Score
+                  <p className="text-sm uppercase tracking-[0.25em] text-cyan-300">
+                    Live Demo Preview
                   </p>
 
-                  <h2 className="text-6xl font-black text-cyan-300">
-                    72
-                    <span className="text-white">/100</span>
-                  </h2>
+                  <p className="mt-2 text-xl text-gray-300">
+                    {demo.label}
+                  </p>
                 </div>
 
-                <div className="rounded-full bg-yellow-500/20 px-4 py-2 text-sm font-semibold text-yellow-300">
-                  Suspicious
+                <div className={`rounded-full px-4 py-2 text-sm font-semibold ${demo.badgeClass}`}>
+                  {demo.badge}
                 </div>
               </div>
 
-              {/* Progress */}
-              <div className="mb-8">
-                <div className="mb-3 flex justify-between text-sm text-gray-400">
-                  <span>Trust Analysis</span>
-                  <span>72%</span>
+              {/* Big Result */}
+              <div className="mb-8 flex items-end justify-between">
+                <div>
+                  <p className="mb-2 text-sm text-gray-400">
+                    Prediction
+                  </p>
+
+                  <h2 className={`text-5xl font-black ${demo.predictionClass}`}>
+                    {demo.prediction}
+                  </h2>
                 </div>
 
-                <div className="h-4 overflow-hidden rounded-full bg-white/10">
-                  <div className="h-full w-[72%] rounded-full bg-yellow-400" />
+                <div className="text-right">
+                  <p className="text-sm text-gray-400">
+                    Confidence
+                  </p>
+
+                  <p className="text-3xl font-black text-white">
+                    {demo.confidence}%
+                  </p>
+                </div>
+              </div>
+
+              {/* Confidence Bar */}
+              <div className="mb-8">
+                <div className="mb-2 flex justify-between text-sm text-gray-400">
+                  <span>Model Confidence</span>
+                  <span>{demo.confidence}%</span>
+                </div>
+
+                <div className="h-3 overflow-hidden rounded-full bg-white/10">
+                  <div
+                    className={`h-full rounded-full ${demo.progressClass}`}
+                    style={{
+                      width: `${demo.confidence}%`,
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Probability Grid */}
+              <div className="mb-8 grid grid-cols-2 gap-4">
+                <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                  <p className="text-sm text-gray-400">
+                    Real Probability
+                  </p>
+
+                  <p className="mt-2 text-2xl font-bold text-green-300">
+                    {demo.realProbability}%
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                  <p className="text-sm text-gray-400">
+                    Fake Probability
+                  </p>
+
+                  <p className="mt-2 text-2xl font-bold text-red-300">
+                    {demo.fakeProbability}%
+                  </p>
                 </div>
               </div>
 
               {/* Signal Cards */}
-              <div className="space-y-4">
-                {[
-                  {
-                    title: "Metadata Consistency",
-                    risk: "34%",
-                  },
-                  {
-                    title: "Compression Analysis",
-                    risk: "61%",
-                  },
-                  {
-                    title: "Visual Artifact Detection",
-                    risk: "72%",
-                  },
-                ].map((signal, index) => (
+              <div className="mb-8 space-y-4">
+                {demo.signals.map((signal, index) => (
                   <div
                     key={index}
                     className="rounded-2xl border border-white/10 bg-black/20 p-5"
                   >
-                    <div className="mb-3 flex items-center justify-between">
+                    <div className="flex items-center justify-between">
                       <h3 className="font-semibold text-white">
                         {signal.title}
                       </h3>
 
                       <span className="font-bold text-cyan-300">
-                        {signal.risk}
+                        {signal.value}
                       </span>
-                    </div>
-
-                    <div className="h-2 overflow-hidden rounded-full bg-white/10">
-                      <div
-                        className="h-full rounded-full bg-cyan-400"
-                        style={{
-                          width: signal.risk,
-                        }}
-                      />
                     </div>
                   </div>
                 ))}
               </div>
 
-              {/* Recommendation */}
-              <div className="mt-8 rounded-2xl border border-cyan-400/20 bg-cyan-400/10 p-5">
+              {/* XAI Note */}
+              <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/10 p-4">
                 <p className="mb-2 text-xs uppercase tracking-widest text-cyan-200">
-                  AI Recommendation
+                  Explainability
                 </p>
 
-                <p className="leading-7 text-cyan-50">
-                  This media contains suspicious manipulation indicators.
-                  Verify authenticity before sharing publicly.
+                <p className="text-sm leading-6 text-cyan-50">
+                  {demo.explanation}
                 </p>
               </div>
             </div>
@@ -176,48 +431,43 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Feature Cards */}
+      {/* Features */}
       <section className="px-6 pb-32">
         <div className="mx-auto max-w-7xl">
           <div className="mb-16">
             <p className="mb-5 text-sm uppercase tracking-[0.3em] text-cyan-300">
-              Platform Features
+              Key Capabilities
             </p>
 
             <h2 className="text-5xl font-black leading-tight">
-              Built for modern
+              Built for
               <span className="block text-cyan-300">
-                media verification
+                real-time AI detection
               </span>
             </h2>
           </div>
 
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
             {[
               {
-                title: "Authenticity Scoring",
+                title: "Real vs AI Classification",
                 description:
-                  "Dynamic forensic-style authenticity scoring for suspicious media.",
+                  "EfficientNet-based model distinguishes real images from AI-generated content for MVP image verification.",
               },
               {
-                title: "Forensic Signals",
+                title: "Confidence Scoring",
                 description:
-                  "Analyze metadata, compression artifacts, and suspicious media patterns.",
+                  "Each prediction includes real probability, fake probability, and model confidence.",
               },
               {
-                title: "Verification Reports",
+                title: "Grad-CAM Explainability",
                 description:
-                  "Download structured verification reports instantly.",
-              },
-              {
-                title: "Persistent History",
-                description:
-                  "Track previous scans with persistent local scan history.",
+                  "Visual heatmaps highlight image regions that influenced the model decision.",
               },
             ].map((feature, index) => (
               <div
                 key={index}
-                className="rounded-3xl border border-white/10 bg-white/[0.04] p-8 transition hover:border-cyan-400/30 hover:bg-cyan-400/[0.03]"
+                className="rounded-3xl border border-white/10 bg-white/[0.04] p-8 transition hover:border-cyan-400/40 hover:bg-cyan-400/[0.04]"
               >
                 <h3 className="mb-5 text-2xl font-semibold">
                   {feature.title}
@@ -236,20 +486,19 @@ export default function HomePage() {
       <section className="px-6 pb-24">
         <div className="mx-auto max-w-6xl rounded-[2.5rem] border border-cyan-400/20 bg-cyan-400/10 p-12 text-center md:p-16">
           <p className="mb-5 text-sm uppercase tracking-[0.3em] text-cyan-300">
-            Start Verifying
+            Try It Now
           </p>
 
           <h2 className="mb-8 text-5xl font-black leading-tight">
-            Experience AI-powered
+            Analyze images with
             <span className="block text-cyan-300">
-              media trust analysis
+              AI-powered detection
             </span>
           </h2>
 
           <p className="mx-auto mb-10 max-w-3xl text-lg leading-9 text-cyan-50">
-            Upload suspicious media, analyze forensic signals,
-            generate authenticity reports, and explore the future
-            of explainable AI-powered verification.
+            Upload any image and instantly get a real/fake prediction,
+            confidence score, probability breakdown, and visual explanation.
           </p>
 
           <Link
@@ -260,6 +509,9 @@ export default function HomePage() {
           </Link>
         </div>
       </section>
+
+      <Footer />
     </main>
   );
 }
+// #Finish

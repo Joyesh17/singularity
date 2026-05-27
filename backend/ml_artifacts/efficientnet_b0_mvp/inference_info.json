@@ -1,0 +1,15 @@
+{
+  "task": "image_fake_detection",
+  "model": "EfficientNet-B0",
+  "input_format": "RGB image resized to 224x224",
+  "output_format": {
+    "prediction": "real or fake",
+    "confidence": "probability score"
+  },
+  "example_output": {
+    "prediction": "fake",
+    "confidence": 0.91,
+    "real_probability": 0.09,
+    "fake_probability": 0.91
+  }
+}

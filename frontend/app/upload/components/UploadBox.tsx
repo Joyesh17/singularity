@@ -1,3 +1,4 @@
+// #Start
 "use client";
 
 import { useState, useEffect } from "react";
@@ -12,13 +13,6 @@ interface UploadBoxProps {
 
 const isImageFile = (file: File): boolean => {
   return file.type.startsWith("image/");
-};
-
-const isSupportedFile = (file: File): boolean => {
-  const imageTypes = file.type.startsWith("image/");
-  const videoTypes = file.type.startsWith("video/");
-  const audioTypes = file.type.startsWith("audio/");
-  return imageTypes || videoTypes || audioTypes;
 };
 
 export default function UploadBox({
@@ -45,10 +39,10 @@ export default function UploadBox({
   }, [selectedFile]);
 
   const handleFileSelect = (file: File) => {
-    if (isSupportedFile(file)) {
+    if (isImageFile(file)) {
       onFileChange(file);
     } else {
-      alert("Please select an image, video, or audio file.");
+      alert("MVP v1 supports image files only.");
     }
   };
 
@@ -95,9 +89,14 @@ export default function UploadBox({
         <label className="flex flex-col items-center justify-center gap-4 cursor-pointer">
           <div className="text-center">
             <p className="text-sm text-gray-300 mb-2">
-              {isDragging ? "Drop your file here" : "Drag and drop your file here"}
+              {isDragging
+                ? "Drop your image here"
+                : "Drag and drop your image here"}
             </p>
             <p className="text-xs text-gray-500">or click to browse</p>
+            <p className="text-xs text-gray-500 mt-1">
+              (Only images supported: JPG, PNG, WEBP)
+            </p>
           </div>
 
           <input
@@ -108,7 +107,7 @@ export default function UploadBox({
               }
             }}
             className="hidden"
-            accept="image/*,video/*,audio/*"
+            accept="image/*"
           />
         </label>
       </div>
@@ -142,9 +141,9 @@ export default function UploadBox({
         disabled={loading}
         className="rounded-xl bg-cyan-500 px-6 py-3 font-semibold text-black transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-70 w-full"
       >
-        {loading ? loadingText : "Upload & Scan"}
+        {loading ? loadingText : "Upload & Scan Image"}
       </button>
     </div>
   );
 }
-
+// #Finish

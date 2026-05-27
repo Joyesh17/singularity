@@ -14,7 +14,7 @@ __pycache__
 
 # Upload storage
 storage/uploads
-storage/reports
+storage/xai
 
 # OS files
 .DS_Store
