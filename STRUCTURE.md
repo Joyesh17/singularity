@@ -1,0 +1,60 @@
+# Singularity — File Structure
+
+Below is the project file tree for the `singularity` workspace.
+
+- singularity/
+  - [README.md](README.md)
+  - [.gitignore](.gitignore)
+  - backend/
+    - [PROJECT_CONTEXT.md](backend/PROJECT_CONTEXT.md)
+    - [model_inference.py](backend/model_inference.py)
+    - [api.py](backend/api.py)
+    - app/
+      - [main.py](backend/app/main.py)
+      - routes/
+        - [upload.py](backend/app/routes/upload.py)
+      - services/
+        - [mock_detector.py](backend/app/services/mock_detector.py)
+    - ml_artifacts/
+      - efficientnet_b0_mvp/
+        - [model_config.json](backend/ml_artifacts/efficientnet_b0_mvp/model_config.json)
+        - [model.pth](backend/ml_artifacts/efficientnet_b0_mvp/model.pth)
+        - [inference_info.json](backend/ml_artifacts/efficientnet_b0_mvp/inference_info.json)
+        - [class_map.json](backend/ml_artifacts/efficientnet_b0_mvp/class_map.json)
+  - frontend/
+    - [AGENTS.md](frontend/AGENTS.md)
+    - [.gitignore](frontend/.gitignore)
+    - [tsconfig.json](frontend/tsconfig.json)
+    - [README.md](frontend/README.md)
+    - public/
+      - [window.svg](frontend/public/window.svg)
+      - [vercel.svg](frontend/public/vercel.svg)
+      - [next.svg](frontend/public/next.svg)
+      - [globe.svg](frontend/public/globe.svg)
+      - [file.svg](frontend/public/file.svg)
+    - [PROJECT_CONTEXT.md](frontend/PROJECT_CONTEXT.md)
+    - [postcss.config.mjs](frontend/postcss.config.mjs)
+    - [package.json](frontend/package.json)
+    - [package-lock.json](frontend/package-lock.json)
+    - [next.config.ts](frontend/next.config.ts)
+    - [eslint.config.mjs](frontend/eslint.config.mjs)
+    - [CLAUDE.md](frontend/CLAUDE.md)
+    - app/
+      - [globals.css](frontend/app/globals.css)
+      - [favicon.ico](frontend/app/favicon.ico)
+      - [layout.tsx](frontend/app/layout.tsx)
+      - [page.tsx](frontend/app/page.tsx)
+      - docs/
+        - [page.tsx](frontend/app/docs/page.tsx)
+      - history/
+        - [page.tsx](frontend/app/history/page.tsx)
+      - upload/
+        - [page.tsx](frontend/app/upload/page.tsx)
+        - components/
+          - [DownloadReportButton.tsx](frontend/app/upload/components/DownloadReportButton.tsx)
+          - [RecommendationBox.tsx](frontend/app/upload/components/RecommendationBox.tsx)
+          - [UploadBox.tsx](frontend/app/upload/components/UploadBox.tsx)
+          - [SignalCard.tsx](frontend/app/upload/components/SignalCard.tsx)
+          - [ScanHistory.tsx](frontend/app/upload/components/ScanHistory.tsx)
+          - [ResultCard.tsx](frontend/app/upload/components/ResultCard.tsx)
+

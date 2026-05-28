@@ -1,4 +1,3 @@
-// #Start
 "use client";
 
 import Link from "next/link";
@@ -7,6 +6,23 @@ import { useEffect, useState } from "react";
 import UploadBox from "./components/UploadBox";
 import ResultCard from "./components/ResultCard";
 
+/**
+ * Constants
+ */
+const MAX_HISTORY_ITEMS = 10;
+const HIGH_FAKE_THRESHOLD = 0.75;
+const LOCAL_STORAGE_KEY = "scan_history";
+
+/**
+ * Use env variable for production
+ */
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  "http://127.0.0.1:8000/predict";
+
+/**
+ * Types
+ */
 type Signal = {
   name: string;
   risk: number;
@@ -23,18 +39,6 @@ type ImageInfo = {
   has_exif: boolean;
 };
 
-type XAIInfo = {
-  method?: string;
-  target_class?: string;
-  interpretation_note?: string;
-  gradcam_path?: string;
-  original_path?: string;
-  metadata_path?: string;
-  gradcam_url?: string;
-  original_url?: string;
-  metadata_url?: string;
-};
-
 type BackendResult = {
   success: boolean;
   prediction: "real" | "fake";
@@ -42,42 +46,29 @@ type BackendResult = {
   real_probability: number;
   fake_probability: number;
   model: string;
-  input_image?: string;
   image_width?: number;
   image_height?: number;
-  important_note?: string;
   timestamp?: string;
-  xai?: XAIInfo;
+  important_note?: string;
+  xai?: any;
   uploaded_file?: {
     original_filename?: string;
     saved_filename?: string;
-    saved_path?: string;
     url?: string;
   };
 };
 
 type ScanResult = {
-  message: string;
   original_filename: string;
-  stored_filename: string;
-  content_type: string;
-  media_category?: string;
-  file_size_bytes: number;
   authenticity_score: number;
   risk_level: string;
-  model_version: string;
-  created_at?: string;
-  image_info?: ImageInfo;
-  signals?: Signal[];
-
   prediction?: "real" | "fake";
   confidence?: number;
   real_probability?: number;
   fake_probability?: number;
   model?: string;
-  xai?: XAIInfo;
+  xai?: any;
   important_note?: string;
-  uploaded_file?: BackendResult["uploaded_file"];
 };
 
 type HistoryItem = {
@@ -89,135 +80,10 @@ type HistoryItem = {
   date: string;
 };
 
-const API_URL = "http://127.0.0.1:8000/predict";
-
-function Header() {
-  return (
-    <header className="sticky top-0 z-50 border-b border-white/10 bg-[#050A14]/80 backdrop-blur-xl">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
-        <Link
-          href="/"
-          className="text-2xl font-black tracking-tight text-cyan-300"
-        >
-          Singularity
-        </Link>
-
-        <nav className="hidden items-center gap-8 text-sm text-gray-300 md:flex">
-          <Link
-            href="/docs"
-            className="transition hover:text-cyan-300"
-          >
-            Documentation
-          </Link>
-
-          <Link
-            href="/upload"
-            className="transition hover:text-cyan-300"
-          >
-            Scanner
-          </Link>
-
-          <Link
-            href="/history"
-            className="transition hover:text-cyan-300"
-          >
-            Result History
-          </Link>
-        </nav>
-
-        <Link
-          href="/upload"
-          className="rounded-xl bg-cyan-400 px-5 py-3 text-sm font-semibold text-black transition hover:bg-cyan-300"
-        >
-          Launch Scanner
-        </Link>
-      </div>
-    </header>
-  );
-}
-
-function Footer() {
-  const currentYear = new Date().getFullYear();
-
-  return (
-    <footer className="border-t border-white/10 bg-[#050A14] px-6 py-12">
-      <div className="mx-auto grid max-w-7xl gap-10 md:grid-cols-3">
-        <div>
-          <h3 className="mb-4 text-2xl font-black text-cyan-300">
-            Singularity
-          </h3>
-
-          <p className="max-w-md leading-7 text-gray-400">
-            An AI-powered fake image detection platform with confidence scoring,
-            scan history, and Grad-CAM explainability for responsible image
-            verification.
-          </p>
-        </div>
-
-        <div>
-          <h4 className="mb-4 font-semibold text-white">
-            Quick Links
-          </h4>
-
-          <div className="space-y-3 text-gray-400">
-            <Link
-              href="/"
-              className="block transition hover:text-cyan-300"
-            >
-              Home
-            </Link>
-
-            <Link
-              href="/upload"
-              className="block transition hover:text-cyan-300"
-            >
-              Scanner
-            </Link>
-
-            <Link
-              href="/docs"
-              className="block transition hover:text-cyan-300"
-            >
-              Documentation
-            </Link>
-
-            <Link
-              href="/history"
-              className="block transition hover:text-cyan-300"
-            >
-              Result History
-            </Link>
-          </div>
-        </div>
-
-        <div>
-          <h4 className="mb-4 font-semibold text-white">
-            Project Information
-          </h4>
-
-          <div className="space-y-3 text-gray-400">
-            <p>Project: Singularity AI</p>
-            <p>MVP Version: v1 Image Detector</p>
-            <p>Contact: +880 1XXX-XXXXXX</p>
-            <p>Location: Bangladesh</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="mx-auto mt-10 flex max-w-7xl flex-col justify-between gap-4 border-t border-white/10 pt-6 text-sm text-gray-500 md:flex-row">
-        <p>
-          © {currentYear} Singularity AI. All rights reserved.
-        </p>
-
-        <p>
-          MVP v1 focuses on Stable Diffusion-style fake image detection.
-        </p>
-      </div>
-    </footer>
-  );
-}
-
-function probabilityToPercent(value: number): number {
+/**
+ * Utility functions
+ */
+function toPercent(value: number): number {
   return Math.round(value * 100);
 }
 
@@ -226,11 +92,9 @@ function getRiskLevel(
   fakeProbability: number
 ): string {
   if (prediction === "fake") {
-    if (fakeProbability >= 0.75) {
-      return "High Risk";
-    }
-
-    return "Suspicious";
+    return fakeProbability >= HIGH_FAKE_THRESHOLD
+      ? "High Risk"
+      : "Suspicious";
   }
 
   return "Likely Real";
@@ -238,97 +102,30 @@ function getRiskLevel(
 
 function getAuthenticityScore(
   prediction: "real" | "fake",
-  realProbability: number,
-  fakeProbability: number
+  real: number,
+  fake: number
 ): number {
-  if (prediction === "real") {
-    return probabilityToPercent(realProbability);
-  }
-
-  return Math.max(0, 100 - probabilityToPercent(fakeProbability));
+  return prediction === "real"
+    ? toPercent(real)
+    : Math.max(0, 100 - toPercent(fake));
 }
 
-function buildSignals(data: BackendResult): Signal[] {
-  return [
-    {
-      name: "AI Image Probability",
-      risk: probabilityToPercent(data.fake_probability),
-      description:
-        "Model-estimated probability that this image is AI-generated.",
-    },
-    {
-      name: "Real Image Probability",
-      risk: probabilityToPercent(data.real_probability),
-      description:
-        "Model-estimated probability that this image is a real photographic image.",
-    },
-    {
-      name: "Model Confidence",
-      risk: probabilityToPercent(data.confidence),
-      description:
-        "Confidence score for the model's final real/fake prediction.",
-    },
-    {
-      name: "Grad-CAM Explainability",
-      risk: probabilityToPercent(data.confidence),
-      description:
-        "Grad-CAM heatmap was generated to show which regions influenced the prediction.",
-    },
-  ];
-}
-
-function mapBackendResultToScanResult(
+function mapBackendResult(
   data: BackendResult,
-  selectedFile: File
+  file: File
 ): ScanResult {
-  const originalFilename =
-    data.uploaded_file?.original_filename || selectedFile.name;
-
-  const storedFilename =
-    data.uploaded_file?.saved_filename || selectedFile.name;
-
-  const authenticityScore = getAuthenticityScore(
-    data.prediction,
-    data.real_probability,
-    data.fake_probability
-  );
-
-  const riskLevel = getRiskLevel(
-    data.prediction,
-    data.fake_probability
-  );
-
-  const width = data.image_width || 0;
-  const height = data.image_height || 0;
-
-  const imageInfo: ImageInfo = {
-    width,
-    height,
-    format: selectedFile.type || "image",
-    mode: "RGB",
-    aspect_ratio: height > 0 ? Number((width / height).toFixed(4)) : 0,
-    megapixels:
-      width > 0 && height > 0
-        ? Number(((width * height) / 1_000_000).toFixed(3))
-        : 0,
-    has_exif: false,
-  };
-
   return {
-    message:
-      "Image analysis completed using the Singularity AI image detector.",
-    original_filename: originalFilename,
-    stored_filename: storedFilename,
-    content_type: selectedFile.type || "image/*",
-    media_category: "image",
-    file_size_bytes: selectedFile.size,
-    authenticity_score: authenticityScore,
-    risk_level: riskLevel,
-    model_version: data.model || "EfficientNet-B0 MVP",
-    created_at: data.timestamp || new Date().toISOString(),
-    image_info: imageInfo,
-    signals: buildSignals(data),
-
+    original_filename:
+      data.uploaded_file?.original_filename || file.name,
+    authenticity_score: getAuthenticityScore(
+      data.prediction,
+      data.real_probability,
+      data.fake_probability
+    ),
+    risk_level: getRiskLevel(
+      data.prediction,
+      data.fake_probability
+    ),
     prediction: data.prediction,
     confidence: data.confidence,
     real_probability: data.real_probability,
@@ -336,10 +133,53 @@ function mapBackendResultToScanResult(
     model: data.model,
     xai: data.xai,
     important_note: data.important_note,
-    uploaded_file: data.uploaded_file,
   };
 }
 
+/**
+ * Header component
+ */
+function Header() {
+  return (
+    <header className="sticky top-0 z-50 border-b border-white/10 bg-[#050A14]/80 backdrop-blur-xl">
+      <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
+        <Link href="/" className="text-2xl font-black text-cyan-300">
+          Singularity
+        </Link>
+
+        <nav className="hidden gap-8 text-sm text-gray-300 md:flex">
+          <Link href="/docs">Documentation</Link>
+          <Link href="/upload">Scanner</Link>
+          <Link href="/history">History</Link>
+        </nav>
+
+        <Link
+          href="/upload"
+          className="rounded-xl bg-cyan-400 px-5 py-3 text-black"
+        >
+          Launch Scanner
+        </Link>
+      </div>
+    </header>
+  );
+}
+
+/**
+ * Footer component
+ */
+function Footer() {
+  return (
+    <footer className="border-t border-white/10 px-6 py-10 text-gray-400">
+      <div className="mx-auto max-w-7xl text-center">
+        © {new Date().getFullYear()} Singularity AI
+      </div>
+    </footer>
+  );
+}
+
+/**
+ * Main page component
+ */
 export default function UploadPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -348,97 +188,91 @@ export default function UploadPage() {
   const [loading, setLoading] = useState(false);
   const [loadingText, setLoadingText] = useState("");
 
+  /**
+   * Load history from localStorage
+   */
   useEffect(() => {
-    const storedHistory = localStorage.getItem("scan_history");
+    const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (!stored) return;
 
-    if (storedHistory) {
-      try {
-        setHistory(JSON.parse(storedHistory));
-      } catch {
-        localStorage.removeItem("scan_history");
-      }
+    try {
+      setHistory(JSON.parse(stored));
+    } catch {
+      localStorage.removeItem(LOCAL_STORAGE_KEY);
     }
   }, []);
 
+  /**
+   * Generate preview
+   */
   useEffect(() => {
-    if (selectedFile) {
-      const url = URL.createObjectURL(selectedFile);
-      setPreviewUrl(url);
-
-      return () => {
-        URL.revokeObjectURL(url);
-      };
-    }
-
-    setPreviewUrl(null);
-  }, [selectedFile]);
-
-  async function handleUpload() {
     if (!selectedFile) {
-      alert("Please select an image first.");
+      setPreviewUrl(null);
       return;
     }
 
-    if (!selectedFile.type.startsWith("image/")) {
-      alert("MVP v1 supports image files only.");
+    const url = URL.createObjectURL(selectedFile);
+    setPreviewUrl(url);
+
+    return () => URL.revokeObjectURL(url);
+  }, [selectedFile]);
+
+  /**
+   * Upload handler
+   */
+  async function handleUpload() {
+    if (!selectedFile) {
+      alert("Please select an image.");
       return;
     }
 
     setLoading(true);
-    setLoadingText("Uploading image...");
-    setResult(null);
-
-    const formData = new FormData();
-    formData.append("file", selectedFile);
+    setLoadingText("Uploading...");
 
     try {
-      setLoadingText("Running AI image detector...");
+      const formData = new FormData();
+      formData.append("file", selectedFile);
 
       const response = await fetch(API_URL, {
         method: "POST",
         body: formData,
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        console.error(data);
-        alert("Prediction failed.");
-        return;
+        throw new Error("Backend responded with error.");
       }
 
-      setLoadingText("Generating explainability heatmap...");
+      const data: BackendResult = await response.json();
 
-      const mappedResult = mapBackendResultToScanResult(
-        data as BackendResult,
-        selectedFile
-      );
+      const mapped = mapBackendResult(data, selectedFile);
 
-      setResult(mappedResult);
+      setResult(mapped);
 
-      const newHistoryItem: HistoryItem = {
-        filename: mappedResult.original_filename,
-        authenticity_score: mappedResult.authenticity_score,
-        risk_level: mappedResult.risk_level,
-        prediction: mappedResult.prediction,
-        confidence: mappedResult.confidence,
+      const newItem: HistoryItem = {
+        filename: mapped.original_filename,
+        authenticity_score: mapped.authenticity_score,
+        risk_level: mapped.risk_level,
+        prediction: mapped.prediction,
+        confidence: mapped.confidence,
         date: new Date().toLocaleString(),
       };
 
-      const updatedHistory = [
-        newHistoryItem,
-        ...history,
-      ].slice(0, 10);
+      setHistory((prev) => {
+        const updated = [newItem, ...prev].slice(
+          0,
+          MAX_HISTORY_ITEMS
+        );
 
-      setHistory(updatedHistory);
+        localStorage.setItem(
+          LOCAL_STORAGE_KEY,
+          JSON.stringify(updated)
+        );
 
-      localStorage.setItem(
-        "scan_history",
-        JSON.stringify(updatedHistory)
-      );
-    } catch (error) {
-      console.error(error);
-      alert("Failed to connect to backend.");
+        return updated;
+      });
+    } catch (err) {
+      console.error(err);
+      alert("Failed to process image. Try again.");
     } finally {
       setLoading(false);
       setLoadingText("");
@@ -450,23 +284,10 @@ export default function UploadPage() {
       <Header />
 
       <section className="px-6 py-16">
-        <div className="mx-auto max-w-4xl">
-          <div className="mb-10 text-center">
-            <p className="mb-4 text-sm uppercase tracking-[0.3em] text-cyan-300">
-              Singularity Scanner
-            </p>
-
-            <h1 className="mb-4 text-5xl font-black">
-              Scan Suspicious Image
-            </h1>
-
-            <p className="mx-auto max-w-3xl leading-7 text-gray-300">
-              Upload an image to detect whether it is likely real or
-              AI-generated. The system returns confidence scores, detected
-              signals, and a Grad-CAM explanation showing which regions
-              influenced the prediction.
-            </p>
-          </div>
+        <div className="mx-auto max-w-4xl text-center">
+          <h1 className="mb-4 text-5xl font-black">
+            Scan Image
+          </h1>
 
           <UploadBox
             selectedFile={selectedFile}
@@ -482,19 +303,6 @@ export default function UploadPage() {
               previewUrl={previewUrl}
             />
           )}
-
-          <div className="mt-8 rounded-2xl border border-yellow-400/20 bg-yellow-500/10 p-5 text-sm leading-7 text-yellow-50">
-            <p className="mb-2 font-semibold text-yellow-300">
-              MVP v1 Scope
-            </p>
-
-            <p>
-              This MVP is optimized for Stable Diffusion-style fake image
-              detection. MVP v2 will expand training to StyleGAN, DALL·E,
-              Midjourney, and other generators for stronger cross-generator
-              generalization.
-            </p>
-          </div>
         </div>
       </section>
 
@@ -502,4 +310,3 @@ export default function UploadPage() {
     </main>
   );
 }
-// #Finish

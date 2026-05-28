@@ -1,8 +1,17 @@
-// #Start
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 
+/**
+ * Constants
+ */
+const SUPPORTED_FILE_TYPE_PREFIX = "image/";
+const FILE_TYPE_ERROR_MESSAGE =
+  "Only image files are supported in MVP v1 (JPG, PNG, WEBP).";
+
+/**
+ * Props
+ */
 interface UploadBoxProps {
   selectedFile: File | null;
   loading: boolean;
@@ -11,10 +20,20 @@ interface UploadBoxProps {
   onUpload: () => void;
 }
 
-const isImageFile = (file: File): boolean => {
-  return file.type.startsWith("image/");
-};
+/**
+ * Utility functions
+ */
+function isImageFile(file: File): boolean {
+  return file.type.startsWith(SUPPORTED_FILE_TYPE_PREFIX);
+}
 
+function formatFileSize(bytes: number): string {
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+}
+
+/**
+ * Component
+ */
 export default function UploadBox({
   selectedFile,
   loading,
@@ -25,53 +44,60 @@ export default function UploadBox({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
+  /**
+   * Generate preview URL when file changes
+   */
   useEffect(() => {
     if (selectedFile && isImageFile(selectedFile)) {
       const url = URL.createObjectURL(selectedFile);
       setPreviewUrl(url);
 
-      return () => {
-        URL.revokeObjectURL(url);
-      };
-    } else {
-      setPreviewUrl(null);
+      return () => URL.revokeObjectURL(url);
     }
+
+    setPreviewUrl(null);
   }, [selectedFile]);
 
-  const handleFileSelect = (file: File) => {
-    if (isImageFile(file)) {
-      onFileChange(file);
-    } else {
-      alert("MVP v1 supports image files only.");
+  /**
+   * Handle file selection (input or drag-drop)
+   */
+  function handleFileSelect(file: File) {
+    if (!isImageFile(file)) {
+      alert(FILE_TYPE_ERROR_MESSAGE);
+      return;
     }
-  };
 
-  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
+    onFileChange(file);
+  }
+
+  /**
+   * Drag event handlers
+   */
+  function handleDragEnter(e: React.DragEvent<HTMLDivElement>) {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(true);
-  };
+  }
 
-  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+  function handleDragLeave(e: React.DragEvent<HTMLDivElement>) {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
-  };
+  }
 
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+  function handleDragOver(e: React.DragEvent<HTMLDivElement>) {
     e.preventDefault();
     e.stopPropagation();
-  };
+  }
 
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+  function handleDrop(e: React.DragEvent<HTMLDivElement>) {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
 
-    if (e.dataTransfer.files?.[0]) {
-      handleFileSelect(e.dataTransfer.files[0]);
-    }
-  };
+    const file = e.dataTransfer.files?.[0];
+    if (file) handleFileSelect(file);
+  }
 
   return (
     <div
@@ -82,68 +108,75 @@ export default function UploadBox({
       className={`rounded-3xl border p-8 shadow-xl transition-all ${
         isDragging
           ? "border-cyan-400 bg-cyan-400/20 shadow-cyan-500/20"
-          : "border-white/10 bg-white/[0.04]"
+          : "border-white/10 bg-white/4"
       }`}
     >
+      {/* Upload input */}
       <div className="mb-6">
-        <label className="flex flex-col items-center justify-center gap-4 cursor-pointer">
+        <label className="flex cursor-pointer flex-col items-center justify-center gap-4">
           <div className="text-center">
-            <p className="text-sm text-gray-300 mb-2">
+            <p className="mb-2 text-sm text-gray-300">
               {isDragging
                 ? "Drop your image here"
                 : "Drag and drop your image here"}
             </p>
-            <p className="text-xs text-gray-500">or click to browse</p>
-            <p className="text-xs text-gray-500 mt-1">
-              (Only images supported: JPG, PNG, WEBP)
+
+            <p className="text-xs text-gray-500">
+              or click to browse
+            </p>
+
+            <p className="mt-1 text-xs text-gray-500">
+              (Supported: JPG, PNG, WEBP)
             </p>
           </div>
 
           <input
             type="file"
-            onChange={(e) => {
-              if (e.target.files?.[0]) {
-                handleFileSelect(e.target.files[0]);
-              }
-            }}
-            className="hidden"
             accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleFileSelect(file);
+            }}
           />
         </label>
       </div>
 
+      {/* Selected file info */}
       {selectedFile && (
         <div className="mb-6 rounded-xl border border-cyan-400/20 bg-cyan-400/10 p-4">
           <p className="text-sm text-cyan-200">
             Selected: {selectedFile.name}
           </p>
-          <p className="text-xs text-gray-400 mt-1">
-            {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+          <p className="mt-1 text-xs text-gray-400">
+            {formatFileSize(selectedFile.size)}
           </p>
         </div>
       )}
 
+      {/* Image preview */}
       {previewUrl && (
-        <div className="mb-6 rounded-2xl border border-white/10 bg-black/30 p-4 overflow-hidden">
-          <p className="text-xs text-gray-400 mb-3 uppercase tracking-widest">
+        <div className="mb-6 overflow-hidden rounded-2xl border border-white/10 bg-black/30 p-4">
+          <p className="mb-3 text-xs uppercase tracking-widest text-gray-400">
             Preview
           </p>
+
           <img
             src={previewUrl}
-            alt="Preview"
-            className="w-full h-auto max-h-96 object-contain rounded-lg"
+            alt="Selected image preview"
+            className="h-auto max-h-96 w-full rounded-lg object-contain"
           />
         </div>
       )}
 
+      {/* Upload button */}
       <button
         onClick={onUpload}
         disabled={loading}
-        className="rounded-xl bg-cyan-500 px-6 py-3 font-semibold text-black transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-70 w-full"
+        className="w-full rounded-xl bg-cyan-500 px-6 py-3 font-semibold text-black transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-70"
       >
         {loading ? loadingText : "Upload & Scan Image"}
       </button>
     </div>
   );
 }
-// #Finish

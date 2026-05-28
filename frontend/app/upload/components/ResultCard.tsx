@@ -1,10 +1,25 @@
-// #Start
 "use client";
 
 import SignalCard from "./SignalCard";
 import RecommendationBox from "./RecommendationBox";
 import DownloadReportButton from "./DownloadReportButton";
 
+/**
+ * Threshold constants 
+ */
+const HIGH_TRUST_THRESHOLD = 75;
+const MEDIUM_TRUST_THRESHOLD = 45;
+const HIGH_FAKE_PROBABILITY = 0.75;
+
+/**
+ * NOTE:
+ * Replace with process.env.NEXT_PUBLIC_API_URL in production
+ */
+const API_BASE_URL = "http://127.0.0.1:8000";
+
+/**
+ * Types
+ */
 interface Signal {
   name: string;
   risk: number;
@@ -22,15 +37,8 @@ interface ImageInfo {
 }
 
 interface XAIInfo {
-  method?: string;
-  target_class?: string;
-  interpretation_note?: string;
-  gradcam_path?: string;
-  original_path?: string;
-  metadata_path?: string;
   gradcam_url?: string;
   original_url?: string;
-  metadata_url?: string;
 }
 
 interface ScanResult {
@@ -52,15 +60,11 @@ interface ScanResult {
   real_probability?: number;
   fake_probability?: number;
   model?: string;
-  image_width?: number;
-  image_height?: number;
   xai?: XAIInfo;
   important_note?: string;
   uploaded_file?: {
     original_filename?: string;
     saved_filename?: string;
-    saved_path?: string;
-    url?: string;
   };
 }
 
@@ -69,48 +73,77 @@ interface ResultCardProps {
   previewUrl?: string | null;
 }
 
-const API_BASE_URL = "http://127.0.0.1:8000";
-
+/**
+ * Utility functions
+ */
 function toPercent(value?: number): number {
-  if (typeof value !== "number" || Number.isNaN(value)) {
-    return 0;
-  }
-
-  if (value <= 1) {
-    return Math.round(value * 100);
-  }
-
-  return Math.round(value);
+  if (typeof value !== "number" || Number.isNaN(value)) return 0;
+  return value <= 1 ? Math.round(value * 100) : Math.round(value);
 }
 
 function toFixedPercent(value?: number): string {
-  if (typeof value !== "number" || Number.isNaN(value)) {
-    return "0.00%";
-  }
-
-  if (value <= 1) {
-    return `${(value * 100).toFixed(2)}%`;
-  }
-
-  return `${value.toFixed(2)}%`;
+  if (typeof value !== "number" || Number.isNaN(value)) return "0.00%";
+  return value <= 1
+    ? `${(value * 100).toFixed(2)}%`
+    : `${value.toFixed(2)}%`;
 }
 
 function buildAssetUrl(url?: string): string | null {
-  if (!url) {
-    return null;
-  }
+  if (!url) return null;
 
-  if (url.startsWith("http://") || url.startsWith("https://")) {
-    return url;
-  }
-
-  if (url.startsWith("/")) {
-    return `${API_BASE_URL}${url}`;
-  }
+  if (url.startsWith("http")) return url;
+  if (url.startsWith("/")) return `${API_BASE_URL}${url}`;
 
   return url;
 }
 
+function getProgressBarClass(score: number): string {
+  if (score >= HIGH_TRUST_THRESHOLD) return "bg-green-400";
+  if (score >= MEDIUM_TRUST_THRESHOLD) return "bg-yellow-400";
+  return "bg-red-400";
+}
+
+function getRiskBadgeClass(risk: string): string {
+  switch (risk) {
+    case "High Risk":
+      return "bg-red-500/20 text-red-300 border border-red-400/20";
+    case "Suspicious":
+      return "bg-yellow-500/20 text-yellow-300 border border-yellow-400/20";
+    case "Likely Real":
+    case "Safe":
+      return "bg-green-500/20 text-green-300 border border-green-400/20";
+    default:
+      return "bg-cyan-500/20 text-cyan-300 border border-cyan-400/20";
+  }
+}
+
+function getPredictionBadgeClass(prediction?: string): string {
+  if (prediction === "fake") {
+    return "bg-red-500/20 text-red-300 border border-red-400/20";
+  }
+
+  if (prediction === "real") {
+    return "bg-green-500/20 text-green-300 border border-green-400/20";
+  }
+
+  return "bg-cyan-500/20 text-cyan-300 border border-cyan-400/20";
+}
+
+function getRecommendation(prediction?: string, risk?: string): string {
+  if (prediction === "fake" || risk === "High Risk") {
+    return "Avoid sharing without verification. This image is likely AI-generated.";
+  }
+
+  if (risk === "Suspicious") {
+    return "Manual verification is advised before sharing this image.";
+  }
+
+  return "Image appears likely real, but always verify critical content from trusted sources.";
+}
+
+/**
+ * Component
+ */
 export default function ResultCard({
   result,
   previewUrl,
@@ -119,42 +152,35 @@ export default function ResultCard({
 
   const realProbability = result.real_probability ?? 0;
   const fakeProbability = result.fake_probability ?? 0;
+
   const confidencePercent = toPercent(result.confidence);
 
   const authenticityScore =
     typeof result.authenticity_score === "number"
       ? result.authenticity_score
       : prediction === "fake"
-        ? Math.max(0, 100 - toPercent(fakeProbability))
-        : toPercent(realProbability);
+      ? Math.max(0, 100 - toPercent(fakeProbability))
+      : toPercent(realProbability);
 
   const riskLevel =
     result.risk_level ??
     (prediction === "fake"
-      ? fakeProbability >= 0.75
+      ? fakeProbability >= HIGH_FAKE_PROBABILITY
         ? "High Risk"
         : "Suspicious"
       : "Likely Real");
-
-  const modelVersion =
-    result.model_version ??
-    result.model ??
-    "EfficientNet-B0 MVP";
 
   const originalFilename =
     result.original_filename ??
     result.uploaded_file?.original_filename ??
     "Uploaded image";
 
-  const contentType = result.content_type ?? "image/*";
-
   const gradcamUrl = buildAssetUrl(result.xai?.gradcam_url);
-  const originalUrl = buildAssetUrl(result.xai?.original_url);
-
-  const displayPreviewUrl = previewUrl ?? originalUrl;
+  const displayPreviewUrl =
+    previewUrl ?? buildAssetUrl(result.xai?.original_url);
 
   const derivedSignals: Signal[] =
-    result.signals && result.signals.length > 0
+    result.signals && result.signals.length
       ? result.signals
       : [
           {
@@ -167,98 +193,24 @@ export default function ResultCard({
             name: "Real Image Probability",
             risk: toPercent(realProbability),
             description:
-              "Model-estimated probability that this image is a real photographic image.",
+              "Probability that this image is a real photograph.",
           },
           {
             name: "Model Confidence",
             risk: confidencePercent,
             description:
-              "Confidence score for the model's final real/fake prediction.",
+              "Confidence score of the final prediction.",
           },
         ];
 
-  const topSignal = [...derivedSignals].sort(
-    (a, b) => b.risk - a.risk
-  )[0];
-
-  const primaryConcern =
-    prediction === "fake"
-      ? topSignal?.name ?? "AI-generated visual patterns detected"
-      : "No strong AI-generated pattern detected";
-
-  const getRiskBadgeStyle = () => {
-    switch (riskLevel) {
-      case "Suspicious":
-        return "bg-yellow-500/20 text-yellow-300 border border-yellow-400/20";
-      case "High Risk":
-        return "bg-red-500/20 text-red-300 border border-red-400/20";
-      case "Likely Real":
-      case "Safe":
-        return "bg-green-500/20 text-green-300 border border-green-400/20";
-      default:
-        return "bg-cyan-500/20 text-cyan-300 border border-cyan-400/20";
-    }
-  };
-
-  const getProgressBarColor = () => {
-    if (authenticityScore >= 75) return "bg-green-400";
-    if (authenticityScore >= 45) return "bg-yellow-400";
-    return "bg-red-400";
-  };
-
-  const getPredictionBadgeStyle = () => {
-    if (prediction === "fake") {
-      return "bg-red-500/20 text-red-300 border border-red-400/20";
-    }
-
-    if (prediction === "real") {
-      return "bg-green-500/20 text-green-300 border border-green-400/20";
-    }
-
-    return "bg-cyan-500/20 text-cyan-300 border border-cyan-400/20";
-  };
-
-  const getRecommendation = () => {
-    if (prediction === "fake" || riskLevel === "High Risk") {
-      return "Avoid sharing without verification. This image is likely AI-generated.";
-    }
-
-    if (riskLevel === "Suspicious") {
-      return "Manual verification is advised before sharing this image.";
-    }
-
-    return "Image appears likely real, but always verify critical content from trusted sources.";
-  };
-
-  const normalizedReportResult = {
-    message:
-      result.message ??
-      "Image analysis completed using the Singularity AI MVP detector.",
-    original_filename: originalFilename,
-    stored_filename:
-      result.stored_filename ??
-      result.uploaded_file?.saved_filename ??
-      originalFilename,
-    content_type: contentType,
-    media_category: result.media_category ?? "image",
-    file_size_bytes: result.file_size_bytes ?? 0,
-    authenticity_score: authenticityScore,
-    risk_level: riskLevel,
-    model_version: modelVersion,
-    created_at: result.created_at,
-    image_info: result.image_info,
-    signals: derivedSignals,
-    prediction,
-    confidence: result.confidence,
-    real_probability: realProbability,
-    fake_probability: fakeProbability,
-    xai: result.xai,
-    important_note: result.important_note,
-  };
+  const topSignal =
+    derivedSignals.length > 0
+      ? [...derivedSignals].sort((a, b) => b.risk - a.risk)[0]
+      : undefined;
 
   return (
-    <div className="mt-10 overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04] shadow-2xl">
-      {/* MEDIA PREVIEW */}
+    <div className="mt-10 overflow-hidden rounded-3xl border border-white/10 bg-white/4 shadow-2xl">
+      {/* Media preview */}
       {displayPreviewUrl && (
         <div className="border-b border-white/10 bg-black/30 p-6">
           <p className="mb-4 text-sm uppercase tracking-widest text-cyan-300">
@@ -267,186 +219,120 @@ export default function ResultCard({
 
           <img
             src={displayPreviewUrl}
-            alt="Uploaded image preview"
-            className="w-full max-h-[500px] object-contain rounded-2xl"
+            alt={originalFilename}
+            className="w-full max-h-125 object-contain rounded-2xl"
           />
         </div>
       )}
 
-      {/* HEADER */}
+      {/* Summary header */}
       <div className="border-b border-white/10 p-8">
-        <div className="mb-6 flex justify-between items-start flex-col md:flex-row gap-4">
+        <div className="mb-6 flex flex-col gap-4 md:flex-row md:justify-between">
           <div>
-            <p className="text-sm text-cyan-300 mb-2 uppercase tracking-widest">
-              Authenticity Analysis
+            <p className="text-sm uppercase tracking-widest text-cyan-300">
+              Authenticity Score
             </p>
 
             <h2 className="text-5xl font-bold">
               {authenticityScore}
               <span className="text-cyan-300"> /100</span>
             </h2>
-
-            <p className="mt-2 text-sm text-gray-400">
-              Higher score means the image appears more likely to be real.
-            </p>
           </div>
 
-          <div className="flex flex-col gap-3 items-start md:items-end">
-            <div className={`px-4 py-2 rounded-full font-semibold ${getRiskBadgeStyle()}`}>
+          <div className="flex flex-col gap-3 md:items-end">
+            <div className={`px-4 py-2 rounded-full ${getRiskBadgeClass(riskLevel)}`}>
               {riskLevel}
             </div>
 
             {prediction && (
-              <div className={`px-4 py-2 rounded-full font-semibold ${getPredictionBadgeStyle()}`}>
-                Prediction: {prediction.toUpperCase()}
+              <div className={`px-4 py-2 rounded-full ${getPredictionBadgeClass(prediction)}`}>
+                {prediction.toUpperCase()}
               </div>
             )}
           </div>
         </div>
 
-        {/* Progress Bar */}
-        <div className="mt-4">
-          <div className="flex justify-between text-sm text-gray-400 mb-2">
+        {/* Progress bar */}
+        <div>
+          <div className="mb-2 flex justify-between text-sm text-gray-400">
             <span>Trust Score</span>
             <span>{authenticityScore}%</span>
           </div>
 
-          <div className="h-4 bg-white/10 rounded-full overflow-hidden">
+          <div className="h-4 rounded-full bg-white/10 overflow-hidden">
             <div
-              className={`${getProgressBarColor()} h-full transition-all`}
+              className={`h-full ${getProgressBarClass(authenticityScore)}`}
               style={{ width: `${authenticityScore}%` }}
             />
           </div>
         </div>
       </div>
 
-      <div className="p-8">
-        {/* MODEL PROBABILITY PANEL */}
-        <div className="mb-10 rounded-3xl border border-cyan-400/20 bg-cyan-500/10 p-6">
-          <p className="text-sm uppercase text-cyan-300 mb-4 tracking-widest">
+      <div className="p-8 space-y-10">
+        {/* Prediction panel */}
+        <div className="rounded-3xl border border-cyan-400/20 bg-cyan-500/10 p-6">
+          <h3 className="mb-4 text-sm uppercase tracking-widest text-cyan-300">
             Model Prediction
-          </p>
+          </h3>
 
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid gap-6 md:grid-cols-3">
             <div>
-              <p className="text-gray-400 text-sm">Final Prediction</p>
-              <p
-                className={`text-xl font-bold ${
-                  prediction === "fake"
-                    ? "text-red-300"
-                    : "text-green-300"
-                }`}
-              >
-                {prediction ? prediction.toUpperCase() : "UNKNOWN"}
+              <p className="text-sm text-gray-400">Prediction</p>
+              <p className="text-xl font-bold">
+                {prediction?.toUpperCase() ?? "UNKNOWN"}
               </p>
             </div>
 
             <div>
-              <p className="text-gray-400 text-sm">Real Probability</p>
-              <p className="text-xl font-bold text-green-300">
+              <p className="text-sm text-gray-400">Real</p>
+              <p className="text-xl text-green-300">
                 {toFixedPercent(realProbability)}
               </p>
             </div>
 
             <div>
-              <p className="text-gray-400 text-sm">Fake Probability</p>
-              <p className="text-xl font-bold text-red-300">
+              <p className="text-sm text-gray-400">Fake</p>
+              <p className="text-xl text-red-300">
                 {toFixedPercent(fakeProbability)}
               </p>
             </div>
           </div>
         </div>
 
-        {/* THREAT PANEL */}
-        <div className="mb-10 rounded-3xl border border-red-400/20 bg-red-500/10 p-6">
-          <p className="text-sm uppercase text-red-300 mb-4 tracking-widest">
-            Threat Assessment
-          </p>
-
-          <div className="grid md:grid-cols-2 gap-6">
-            <div>
-              <p className="text-gray-400 text-sm">Threat Level</p>
-              <p className="text-xl font-bold text-white">
-                {riskLevel}
-              </p>
-            </div>
-
-            <div>
-              <p className="text-gray-400 text-sm">Confidence</p>
-              <p className="text-xl font-bold text-cyan-300">
-                {confidencePercent}%
-              </p>
-            </div>
-
-            <div>
-              <p className="text-gray-400 text-sm">Primary Concern</p>
-              <p className="text-white font-semibold">
-                {primaryConcern}
-              </p>
-            </div>
-
-            <div>
-              <p className="text-gray-400 text-sm">Recommended Action</p>
-              <p className="text-white font-semibold">
-                {getRecommendation()}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* GRAD-CAM */}
+        {/* Grad-CAM visualization */}
         {gradcamUrl && (
-          <div className="mb-10 rounded-3xl border border-cyan-400/20 bg-black/30 p-6">
-            <p className="mb-2 text-sm uppercase tracking-widest text-cyan-300">
-              Explainable AI: Grad-CAM
-            </p>
-
-            <p className="mb-5 text-sm leading-7 text-gray-300">
-              The heatmap highlights regions that influenced the model&apos;s
-              predicted class. Red/yellow areas indicate stronger relative
-              contribution. They do not necessarily mean fake artifacts.
-            </p>
+          <div className="rounded-3xl border border-cyan-400/20 bg-black/30 p-6">
+            <h3 className="mb-4 text-sm uppercase tracking-widest text-cyan-300">
+              Grad-CAM Explanation
+            </h3>
 
             <img
               src={gradcamUrl}
-              alt="Grad-CAM explanation"
-              className="w-full max-h-[500px] object-contain rounded-2xl border border-white/10"
+              alt="Grad-CAM heatmap"
+              className="w-full rounded-2xl"
             />
           </div>
         )}
 
-        {/* Signals */}
-        {derivedSignals.length > 0 && (
-          <div className="mb-10">
-            <h3 className="text-2xl font-semibold mb-5">
-              Detected Signals
-            </h3>
+        {/* Detected signals */}
+        <div>
+          <h3 className="mb-4 text-2xl font-semibold">
+            Detected Signals
+          </h3>
 
-            <div className="space-y-4">
-              {derivedSignals.map((signal, index) => (
-                <SignalCard key={index} signal={signal} />
-              ))}
-            </div>
+          <div className="space-y-4">
+            {derivedSignals.map((signal, index) => (
+              <SignalCard key={index} signal={signal} />
+            ))}
           </div>
-        )}
+        </div>
 
-        {/* MVP LIMITATION NOTE */}
-        {result.important_note && (
-          <div className="mb-10 rounded-2xl border border-yellow-400/20 bg-yellow-500/10 p-5">
-            <p className="mb-2 text-xs uppercase tracking-widest text-yellow-300">
-              MVP Note
-            </p>
-
-            <p className="text-sm leading-7 text-yellow-50">
-              {result.important_note}
-            </p>
-          </div>
-        )}
-
+        {/* Recommendation */}
         <RecommendationBox />
-        <DownloadReportButton result={normalizedReportResult} />
+
+        {/* Report download */}
+        <DownloadReportButton result={result} />
       </div>
     </div>
   );
 }
-// #Finish

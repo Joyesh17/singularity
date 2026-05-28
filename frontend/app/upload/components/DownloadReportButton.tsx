@@ -1,56 +1,101 @@
 "use client";
 
-interface DownloadReportButtonProps {
-  result: any;
+/**
+ * Constants
+ */
+const REPORT_PLATFORM = "Singularity";
+const REPORT_VERSION = "1.0";
+const DEFAULT_RECOMMENDATION =
+  "Verify authenticity before sharing publicly.";
+
+/**
+ * Types
+ */
+interface Signal {
+  name: string;
+  risk: number;
+  description: string;
 }
 
+interface ReportResult {
+  original_filename?: string;
+  content_type?: string;
+  file_size_bytes?: number;
+  authenticity_score?: number;
+  risk_level?: string;
+  model_version?: string;
+  signals?: Signal[];
+}
+
+interface DownloadReportButtonProps {
+  result: ReportResult;
+}
+
+/**
+ * Utility: format date for filename
+ */
+function getDateString(): string {
+  const date = new Date();
+  return date.toISOString().split("T")[0];
+}
+
+/**
+ * Build report object
+ */
+function buildReport(result: ReportResult) {
+  return {
+    generated_at: new Date().toISOString(),
+    platform: REPORT_PLATFORM,
+    report_version: REPORT_VERSION,
+
+    media: {
+      filename: result.original_filename ?? "unknown",
+      content_type: result.content_type ?? "unknown",
+      file_size_bytes: result.file_size_bytes ?? 0,
+    },
+
+    analysis: {
+      authenticity_score: result.authenticity_score ?? 0,
+      risk_level: result.risk_level ?? "unknown",
+      model_version: result.model_version ?? "unknown",
+      signals: result.signals ?? [],
+    },
+
+    recommendation: DEFAULT_RECOMMENDATION,
+  };
+}
+
+/**
+ * Component
+ * Provides downloadable JSON report of analysis result
+ */
 export default function DownloadReportButton({
   result,
 }: DownloadReportButtonProps) {
   function downloadReport() {
-    const reportData = {
-      generated_at: new Date().toISOString(),
-      platform: "Singularity",
-      report_version: "1.0",
+    try {
+      const reportData = buildReport(result);
 
-      media: {
-        filename: result.original_filename,
-        content_type: result.content_type,
-        file_size_bytes: result.file_size_bytes,
-      },
+      const blob = new Blob(
+        [JSON.stringify(reportData, null, 2)],
+        { type: "application/json" }
+      );
 
-      analysis: {
-        authenticity_score: result.authenticity_score,
-        risk_level: result.risk_level,
-        model_version: result.model_version,
-        signals: result.signals || [],
-      },
+      const url = URL.createObjectURL(blob);
 
-      recommendation:
-        "Verify authenticity before sharing publicly.",
-    };
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `singularity-report-${getDateString()}.json`;
 
-    const jsonString = JSON.stringify(reportData, null, 2);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
 
-    const blob = new Blob([jsonString], {
-      type: "application/json",
-    });
-
-    const url = URL.createObjectURL(blob);
-
-    const link = document.createElement("a");
-
-    link.href = url;
-
-    link.download = `singularity-report-${Date.now()}.json`;
-
-    document.body.appendChild(link);
-
-    link.click();
-
-    document.body.removeChild(link);
-
-    URL.revokeObjectURL(url);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Failed to generate report:", error);
+      alert("Failed to download report. Please try again.");
+    }
   }
 
   return (

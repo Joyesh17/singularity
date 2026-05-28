@@ -1,4 +1,3 @@
-// #Start
 import Link from "next/link";
 
 function Header() {
@@ -164,7 +163,7 @@ export default function DocsPage() {
 
             <Link
               href="/"
-              className="rounded-2xl border border-white/10 bg-white/[0.04] px-7 py-4 font-semibold transition hover:border-cyan-400/30 hover:bg-cyan-400/10"
+              className="rounded-2xl border border-white/10 bg-white/4 px-7 py-4 font-semibold transition hover:border-cyan-400/30 hover:bg-cyan-400/10"
             >
               Back to Home
             </Link>
@@ -205,7 +204,7 @@ export default function DocsPage() {
           </div>
 
           <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-            <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-8">
+            <div className="rounded-3xl border border-white/10 bg-white/4 p-8">
               <h3 className="mb-5 text-center text-3xl font-semibold">
                 Problem
               </h3>
@@ -220,7 +219,7 @@ export default function DocsPage() {
               </p>
             </div>
 
-            <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-8">
+            <div className="rounded-3xl border border-white/10 bg-white/4 p-8">
               <h3 className="mb-5 text-center text-3xl font-semibold">
                 Solution
               </h3>
@@ -249,7 +248,7 @@ export default function DocsPage() {
             </h2>
           </div>
 
-          <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-8">
+          <div className="rounded-3xl border border-white/10 bg-white/4 p-8">
             <p className="mb-6 leading-8 text-gray-300">
               Deepfake detection across image, video, and audio is a large
               multimodal problem. Building all three modalities at once would
@@ -334,7 +333,7 @@ export default function DocsPage() {
             ].map((feature, index) => (
               <div
                 key={index}
-                className="rounded-2xl border border-white/10 bg-white/[0.04] p-6 text-center transition hover:border-cyan-400/30 hover:bg-cyan-400/[0.04]"
+                className="rounded-2xl border border-white/10 bg-white/4 p-6 text-center transition hover:border-cyan-400/30 hover:bg-cyan-400/4"
               >
                 <h3 className="mb-4 text-xl font-semibold text-cyan-200">
                   {feature.title}
@@ -361,7 +360,7 @@ export default function DocsPage() {
           </div>
 
           <div className="space-y-6">
-            <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-8">
+            <div className="rounded-3xl border border-white/10 bg-white/4 p-8">
               <h3 className="mb-4 text-center text-2xl font-semibold text-cyan-300">
                 EfficientNet-B0
               </h3>
@@ -376,7 +375,7 @@ export default function DocsPage() {
               </p>
             </div>
 
-            <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-8">
+            <div className="rounded-3xl border border-white/10 bg-white/4 p-8">
               <h3 className="mb-4 text-center text-2xl font-semibold text-cyan-300">
                 Transfer Learning
               </h3>
@@ -391,7 +390,7 @@ export default function DocsPage() {
               </p>
             </div>
 
-            <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-8">
+            <div className="rounded-3xl border border-white/10 bg-white/4 p-8">
               <h3 className="mb-4 text-center text-2xl font-semibold text-cyan-300">
                 Grad-CAM Explainability
               </h3>
@@ -419,7 +418,7 @@ export default function DocsPage() {
             </h2>
           </div>
 
-          <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-8">
+          <div className="rounded-3xl border border-white/10 bg-white/4 p-8">
             <p className="mb-6 leading-8 text-gray-300">
               The MVP v1 dataset was built as a balanced image classification
               dataset with real images and AI-generated fake images. The real
@@ -467,7 +466,7 @@ export default function DocsPage() {
             </h2>
           </div>
 
-          <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-8">
+          <div className="rounded-3xl border border-white/10 bg-white/4 p-8">
             <p className="mb-8 text-center leading-8 text-gray-300">
               On the validation split used for MVP v1, the model achieved very
               strong performance. These numbers demonstrate that the system is
@@ -537,7 +536,7 @@ export default function DocsPage() {
             </h2>
           </div>
 
-          <div className="overflow-x-auto rounded-3xl border border-white/10 bg-white/[0.04] p-8">
+          <div className="overflow-x-auto rounded-3xl border border-white/10 bg-white/4 p-8">
             <div className="flex justify-center">
               <pre className="inline-block text-left text-sm leading-8 text-cyan-100">
 {`
@@ -594,7 +593,7 @@ export default function DocsPage() {
           </div>
 
           <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-            <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-6 text-center">
+            <div className="rounded-2xl border border-white/10 bg-white/4 p-6 text-center">
               <h3 className="mb-4 text-xl font-semibold text-cyan-300">
                 Frontend
               </h3>
@@ -607,7 +606,7 @@ export default function DocsPage() {
               </ul>
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-6 text-center">
+            <div className="rounded-2xl border border-white/10 bg-white/4 p-6 text-center">
               <h3 className="mb-4 text-xl font-semibold text-cyan-300">
                 Backend
               </h3>
@@ -620,7 +619,7 @@ export default function DocsPage() {
               </ul>
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-6 text-center">
+            <div className="rounded-2xl border border-white/10 bg-white/4 p-6 text-center">
               <h3 className="mb-4 text-xl font-semibold text-cyan-300">
                 AI Layer
               </h3>
@@ -682,7 +681,7 @@ export default function DocsPage() {
             ].map((step, index) => (
               <div
                 key={index}
-                className="rounded-2xl border border-white/10 bg-white/[0.04] p-6 text-center"
+                className="rounded-2xl border border-white/10 bg-white/4 p-6 text-center"
               >
                 <h3 className="mb-3 text-2xl font-semibold text-cyan-300">
                   {step.title}
@@ -708,7 +707,7 @@ export default function DocsPage() {
             </h2>
           </div>
 
-          <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-8">
+          <div className="rounded-3xl border border-white/10 bg-white/4 p-8">
             <p className="mb-6 leading-8 text-gray-300">
               Grad-CAM highlights image regions that contributed strongly to
               the model&apos;s predicted class. If the prediction is fake, the
@@ -768,7 +767,7 @@ export default function DocsPage() {
             </h2>
           </div>
 
-          <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-8">
+          <div className="rounded-3xl border border-white/10 bg-white/4 p-8">
             <p className="mb-8 text-center leading-8 text-gray-300">
               Testing showed that the MVP v1 model is strongest on Stable
               Diffusion-style images and may not generalize reliably to all
@@ -818,7 +817,7 @@ export default function DocsPage() {
               ].map((item, index) => (
                 <div
                   key={index}
-                  className="rounded-2xl border border-white/10 bg-white/[0.04] p-6 text-center"
+                  className="rounded-2xl border border-white/10 bg-white/4 p-6 text-center"
                 >
                   <p className="text-gray-200">
                     {item}
@@ -834,4 +833,3 @@ export default function DocsPage() {
     </main>
   );
 }
-// #Finish
