@@ -1,402 +1,112 @@
-\*\*\* End Patch
-│ │ ├── RecommendationBox.tsx
-│ │ └── DownloadReportButton.tsx
-│ └── public/
-│
-└── storage/
-├── uploads/
-└── xai/
+# Singularity — AI Image Authenticity Scanner
 
-````
+Lightweight MVP for detecting AI-generated images with explainability (Grad-CAM).
 
----
+## Repository layout (top-level)
 
-## Backend Setup
+```
+backend/                # FastAPI backend (model inference)
+frontend/               # Next.js frontend (React + TypeScript)
+storage/                # runtime: uploads and xai output
+backend/ml_artifacts/   # local model artifacts (not tracked)
+```
 
-Navigate to the backend folder:
+## Quickstart
+
+Prerequisites:
+
+- Python 3.10+ (for backend)
+- Node 18+ (for Next 16 / React 19)
+
+1. Backend
 
 ```bash
 cd backend
-````
-
-Create and activate a virtual environment.
-
-### Windows PowerShell
-
-```powershell
 python -m venv venv
+# Windows PowerShell
 .\venv\Scripts\Activate.ps1
-```
-
-### macOS/Linux
-
-```bash
-python3 -m venv venv
-source venv/bin/activate
-```
-
-Install dependencies:
-
-```bash
+# macOS / Linux
+# source venv/bin/activate
 pip install -r requirements.txt
-```
-
-If `requirements.txt` does not exist yet, create it with:
-
-```txt
-fastapi
-uvicorn
-python-multipart
-torch
-torchvision
-numpy
-pillow
-opencv-python-headless
-```
-
-Run the backend:
-
-```bash
 uvicorn api:app --reload --host 127.0.0.1 --port 8000
 ```
 
-Backend URL:
+Health: http://127.0.0.1:8000/health
+Docs: http://127.0.0.1:8000/docs
 
-```text
-http://127.0.0.1:8000
-```
-
-Health check:
-
-```text
-http://127.0.0.1:8000/health
-```
-
-API docs:
-
-```text
-http://127.0.0.1:8000/docs
-```
-
----
-
-## Frontend Setup
-
-Navigate to the frontend folder:
+2. Frontend
 
 ```bash
 cd frontend
-```
-
-Install dependencies:
-
-```bash
 npm install
-```
-
-Create a local environment file:
-
-```text
-.env.local
-```
-
-Add:
-
-```env
-NEXT_PUBLIC_API_URL=http://127.0.0.1:8000/predict
-```
-
-Run the frontend:
-
-```bash
+# create .env.local with NEXT_PUBLIC_API_URL if needed
 npm run dev
 ```
 
-Frontend URL:
+App: http://localhost:3000
 
-```text
-http://localhost:3000
+## Environment variables
+
+Frontend (.env.local):
+
 ```
-
----
-
-## API Overview
-
-### Health Check
-
-```http
-GET /health
-```
-
-Example response:
-
-```json
-{
-  "status": "ok",
-  "detector_loaded": true
-}
-```
-
-### Prediction Endpoint
-
-```http
-POST /predict
-Content-Type: multipart/form-data
-```
-
-Request field:
-
-```text
-file: image file
-```
-
-Example response:
-
-```json
-{
-  "success": true,
-  "prediction": "fake",
-  "confidence": 0.982,
-  "real_probability": 0.018,
-  "fake_probability": 0.982,
-  "model": "EfficientNet-B0",
-  "xai": {
-    "method": "Grad-CAM",
-    "target_class": "fake",
-    "gradcam_url": "/storage/xai/gradcam_example.png",
-    "original_url": "/storage/xai/original_example.png"
-  }
-}
-```
-
----
-
-## Local Testing Workflow
-
-Run backend:
-
-```bash
-cd backend
-uvicorn api:app --reload --host 127.0.0.1 --port 8000
-```
-
-Run frontend:
-
-```bash
-cd frontend
-npm run dev
-```
-
-Open:
-
-```text
-http://localhost:3000
-```
-
-Test pages:
-
-```text
-/
-/upload
-/history
-/docs
-```
-
----
-
-## Deployment Plan
-
-Recommended free deployment stack:
-
-```text
-Frontend: Vercel
-Backend: Render
-```
-
-### Frontend Deployment
-
-Deploy the `frontend/` folder to Vercel.
-
-Set environment variable:
-
-```env
-NEXT_PUBLIC_API_URL=https://your-render-backend-url.onrender.com/predict
-```
-
-### Backend Deployment
-
-Deploy the `backend/` folder to Render.
-
-Example start command:
-
-```bash
-uvicorn api:app --host 0.0.0.0 --port $PORT
-```
-
-Render should install dependencies from:
-
-```text
-backend/requirements.txt
-```
-
----
-
-## Model Artifact Notice
-
-The trained model file:
-
-```text
-backend/ml_artifacts/efficientnet_b0_mvp/model.pth
-```
-
-may be large.
-
-Before pushing to GitHub, check file size. If the file is too large, avoid committing it directly.
-
-Recommended options:
-
-- GitHub Releases
-- Hugging Face model repository
-- Google Drive download link
-- Git LFS
-
-The backend expects the model artifact folder to exist at runtime.
-
----
-
-## Environment Variables
-
-### Frontend
-
-```env
 NEXT_PUBLIC_API_URL=http://127.0.0.1:8000/predict
 ```
 
-### Backend
+Backend (recommended in prod):
 
-The current local MVP does not require secrets.
-
-Recommended production variables:
-
-```env
-ALLOWED_ORIGINS=https://your-frontend-domain.com
+```
+ALLOWED_ORIGINS=http://localhost:3000
+SIMPLE_API_KEYS=key1,key2
+RATE_LIMIT=30/minute
 MODEL_ARTIFACT_DIR=backend/ml_artifacts/efficientnet_b0_mvp
 ```
 
----
+## Model artifacts
 
-## Current Limitations
+Place model files under `backend/ml_artifacts/efficientnet_b0_mvp/` with the expected names:
 
-MVP v1 limitations:
+- `model.pth` (weights)
+- `model_config.json`
+- `class_map.json`
+- `inference_info.json`
 
-1. **Image-only detection**
-   - Video and audio are not supported in MVP v1.
+These files are large and should not be committed directly. Use one of:
 
-2. **Single-generator fake training**
-   - Fake training images are primarily Stable Diffusion v1.5.
-   - The model may not generalize well to StyleGAN, DALL·E, Midjourney, or other generators.
+- Git LFS
+- GitHub Releases / external hosting (Hugging Face, Google Drive)
 
-3. **Local browser history**
-   - Scan history is stored in browser localStorage.
-   - It is not synced to a database.
+To stop tracking a model already committed:
 
-4. **No authentication**
-   - The MVP does not include user accounts or API keys.
+```bash
+git rm --cached backend/ml_artifacts/efficientnet_b0_mvp/model.pth
+git commit -m "Stop tracking model weights; add to .gitignore"
+```
 
-5. **No rate limiting**
-   - Production deployment should add basic abuse protection.
+## CI / Deployment recommendations
 
-6. **CPU inference**
-   - The current deployment path assumes CPU inference.
-   - EfficientNet-B0 is lightweight enough for demo-scale use.
+- Add a minimal GitHub Actions workflow to run lint/tests and a backend import smoke test.
+- Use Vercel for `frontend/` and Render/Heroku for `backend/` (or Docker). Example backend command for Render:
 
----
+```text
+uvicorn api:app --host 0.0.0.0 --port $PORT
+```
 
-## Responsible AI Statement
+## Checklist before pushing
 
-Singularity is designed as an assistive verification tool, not a final authority.
-
-The model output should be interpreted as evidence, not absolute truth. For high-impact or sensitive media, users should verify results through trusted sources and additional forensic review.
-
-The system provides:
-
-- transparent prediction probabilities
-- visible confidence scoring
-- Grad-CAM explanation heatmaps
-- explicit limitation notes
-
-The project does not claim universal deepfake detection capability in MVP v1.
-
----
-
-## Recommended GitHub Checklist
-
-Before pushing publicly:
-
-- [ ] Remove unused template files.
-- [ ] Remove unused mock backend files if no longer needed.
-- [ ] Ensure `backend/requirements.txt` exists.
-- [ ] Ensure `.env.local` is not committed.
-- [ ] Check whether `model.pth` should be committed or hosted separately.
-- [ ] Run `npm run build` inside `frontend/`.
-- [ ] Run backend import test.
-- [ ] Run `/health` endpoint.
-- [ ] Test `/predict` from Swagger UI.
-- [ ] Test frontend upload flow.
-- [ ] Test history page.
-- [ ] Test docs page.
-
----
+- [ ] Ensure `.env.local` and other secrets are not committed
+- [ ] Remove large model files from git history or use Git LFS
+- [ ] Add `README.md` (this file) and `LICENSE` if desired
+- [ ] Add basic CI (lint/test)
 
 ## Troubleshooting
 
-### Pylance cannot resolve Python imports
-
-Select the backend virtual environment interpreter in VS Code:
-
-```text
-D:\singularity\backend\venv\Scripts\python.exe
-```
-
-If the interpreter does not appear, use:
-
-```text
-Python: Select Interpreter → Enter interpreter path
-```
-
-Then install dependencies:
-
-```bash
-pip install -r requirements.txt
-```
-
-### Backend does not start
-
-Verify dependencies:
-
-```bash
-python -c "import torch; import torchvision; import fastapi; import cv2; print('Backend imports OK')"
-```
-
-### Frontend cannot connect to backend
-
-Check that the backend is running:
-
-```text
-http://127.0.0.1:8000/health
-```
-
-Check frontend `.env.local`:
-
-```env
-NEXT_PUBLIC_API_URL=http://127.0.0.1:8000/predict
-```
-
-Restart the frontend dev server after editing `.env.local`.
-
----
+- If backend imports fail, ensure the correct Python interpreter and dependencies are installed.
+- If frontend cannot reach API, confirm `NEXT_PUBLIC_API_URL` and CORS settings in backend.
 
 ## License
+
+Add a license file (e.g., MIT) if you intend to publish.
 
 This project is intended for hackathon and educational use.
 
