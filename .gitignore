@@ -29,3 +29,11 @@ yarn-error.log*
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
+
+# Machine learning artifacts and model weights (avoid large binary blobs in repo)
+backend/ml_artifacts/
+**/model.pth
+**/model.pt
+*.pth
+*.pt
+*.ckpt

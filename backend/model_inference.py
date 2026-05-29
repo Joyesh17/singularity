@@ -75,6 +75,27 @@ def get_default_artifact_dir() -> Path:
     return get_backend_root() / "ml_artifacts" / "efficientnet_b0_mvp"
 
 
+def load_class_names(config_path: Path, class_map_path: Path) -> list[str]:
+    """
+    Load class names from the model config and validate them against class_map.
+    """
+    with open(config_path, "r", encoding="utf-8") as file:
+        model_config = json.load(file)
+
+    with open(class_map_path, "r", encoding="utf-8") as file:
+        class_map = json.load(file)
+
+    class_names = model_config.get("class_names")
+    if not isinstance(class_names, list) or not class_names:
+        raise ValueError("model_config.json must contain a non-empty class_names list")
+
+    expected_class_names = [class_map[str(index)] for index in sorted(map(int, class_map.keys()))]
+    if len(expected_class_names) != len(class_names) or expected_class_names != class_names:
+        raise ValueError("class_names in model_config.json must match class_map.json order")
+
+    return class_names
+
+
 # ============================================================
 # 2. Detector wrapper
 # ============================================================
@@ -149,6 +170,11 @@ class SingularityImageDetector:
         with torch.no_grad():
             logits = self.model(image_tensor)
             probabilities = F.softmax(logits, dim=1)[0]
+
+        if probabilities.numel() != self.num_classes:
+            raise ValueError(
+                f"Model output size {probabilities.numel()} does not match configured num_classes {self.num_classes}."
+            )
 
         real_probability = float(probabilities[0].detach().cpu().item())
         fake_probability = float(probabilities[1].detach().cpu().item())
@@ -231,6 +257,11 @@ def load_detector(
     with open(config_path, "r", encoding="utf-8") as file:
         model_config = json.load(file)
 
+    class_names = load_class_names(config_path, class_map_path)
+
+    if int(model_config["num_classes"]) != len(class_names):
+        raise ValueError("num_classes in model_config.json must match class count")
+
     if device is None:
         torch_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     else:
@@ -244,7 +275,11 @@ def load_detector(
         int(model_config["num_classes"])
     )
 
-    state_dict = torch.load(model_path, map_location=torch_device)
+    try:
+        state_dict = torch.load(model_path, map_location=torch_device, weights_only=True)
+    except TypeError:
+        # Older torch versions do not support weights_only.
+        state_dict = torch.load(model_path, map_location=torch_device)
     model.load_state_dict(state_dict)
 
     model = model.to(torch_device)
@@ -256,6 +291,8 @@ def load_detector(
         artifact_dir=artifact_dir,
         device=torch_device
     )
+
+    detector.class_names = class_names
 
     return detector
 
@@ -424,8 +461,10 @@ def predict_image_with_gradcam(
         target_layer=detector.model.features[-1]
     )
 
-    cam = gradcam.generate(image_tensor, predicted_index)
-    gradcam.close()
+    try:
+        cam = gradcam.generate(image_tensor, predicted_index)
+    finally:
+        gradcam.close()
 
     original_np = np.array(original_image)
 

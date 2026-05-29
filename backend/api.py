@@ -1,53 +1,53 @@
-#Start
-"""
-Singularity Backend API
-
-File location:
-    backend/api.py
-
-Purpose:
-    FastAPI backend for image fake detection.
-
-Endpoints:
-    GET  /
-    GET  /health
-    POST /predict
-
-Expected local project structure:
-    singularity/
-    ├── backend/
-    │   ├── api.py
-    │   ├── model_inference.py
-    │   └── ml_artifacts/
-    │       └── efficientnet_b0_mvp/
-    │           ├── model.pth
-    │           ├── model_config.json
-    │           ├── class_map.json
-    │           └── inference_info.json
-    ├── storage/
-    │   ├── uploads/
-    │   └── xai/
-    └── ...
-
-Run from backend folder:
-    uvicorn api:app --reload --host 127.0.0.1 --port 8000
-
-Or run from project root:
-    uvicorn backend.api:app --reload --host 127.0.0.1 --port 8000
-"""
-
 from pathlib import Path
 from datetime import datetime
 import shutil
 import uuid
 import traceback
 from typing import Dict, Any
+import os
+import logging
 
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from PIL import Image, UnidentifiedImageError
+from fastapi import FastAPI, UploadFile, File, HTTPException, Request, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from model_inference import load_detector, predict_image_with_gradcam
+try:
+    from slowapi import Limiter, _rate_limit_exceeded_handler
+    from slowapi.util import get_remote_address
+    from slowapi.errors import RateLimitExceeded
+    from slowapi.middleware import SlowAPIMiddleware
+    _SLOWAPI_AVAILABLE = True
+except Exception:
+    # If slowapi is not installed, provide a no-op fallback so the API can run
+    _SLOWAPI_AVAILABLE = False
+
+    class RateLimitExceeded(Exception):
+        pass
+
+    def _rate_limit_exceeded_handler(request, exc):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded")
+
+    # Dummy limiter with a `.limit()` decorator that is a no-op
+    class _NoOpLimiter:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def limit(self, *args, **kwargs):
+            def _decorator(func):
+                return func
+
+            return _decorator
+
+    def get_remote_address(request):
+        # best-effort remote address extraction; return placeholder
+        try:
+            return request.client.host  # type: ignore
+        except Exception:
+            return "unknown"
+
+    Limiter = _NoOpLimiter
 
 
 # ============================================================
@@ -64,6 +64,10 @@ XAI_DIR = STORAGE_DIR / "xai"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 XAI_DIR.mkdir(parents=True, exist_ok=True)
 
+# Logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("singularity")
+
 
 # ============================================================
 # 2. App setup
@@ -77,17 +81,22 @@ app = FastAPI(
 
 # Adjust origins later if needed.
 # For local development, this allows frontend calls from common dev ports.
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
+# Configure CORS from environment variable `ALLOWED_ORIGINS` (comma-separated),
+# falling back to common local dev origins.
+allowed_origins_env = os.getenv("ALLOWED_ORIGINS")
+if allowed_origins_env:
+    allow_origins = [o.strip() for o in allowed_origins_env.split(",") if o.strip()]
+else:
+    allow_origins = [
         "http://localhost:3000",
         "http://127.0.0.1:3000",
         "http://localhost:5173",
         "http://127.0.0.1:5173",
-        "http://localhost:8000",
-        "http://127.0.0.1:8000",
-        "*",
-    ],
+    ]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allow_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -96,11 +105,46 @@ app.add_middleware(
 # Serve storage files so frontend can display Grad-CAM images.
 # Example:
 #   /storage/xai/gradcam_xxxxx.png
-app.mount(
-    "/storage",
-    StaticFiles(directory=str(STORAGE_DIR)),
-    name="storage"
-)
+# Serve only the uploads and xai subfolders to avoid exposing unrelated files.
+app.mount("/storage/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
+app.mount("/storage/xai", StaticFiles(directory=str(XAI_DIR)), name="xai")
+
+
+# Security headers middleware
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    # Common security headers for public services behind TLS
+    response.headers.setdefault("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload")
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    response.headers.setdefault("Permissions-Policy", "interest-cohort=()")
+    return response
+
+
+# -----------------------------
+# Rate limiting & API key
+# -----------------------------
+# Simple in-memory rate limiter for MVP using slowapi. Configure via env vars:
+#   SIMPLE_API_KEYS=key1,key2
+#   RATE_LIMIT=30/minute
+
+RATE_LIMIT = os.getenv("RATE_LIMIT", "30/minute")
+
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Only add the SlowAPI middleware when the package is available.
+if _SLOWAPI_AVAILABLE:
+    app.add_middleware(SlowAPIMiddleware)
+else:
+    logger.warning("slowapi not available; rate limiting is disabled. Install 'slowapi' to enable it.")
+
+_api_keys_env = os.getenv("SIMPLE_API_KEYS", "")
+ALLOWED_API_KEYS = {k.strip() for k in _api_keys_env.split(",") if k.strip()}
+
 
 
 # ============================================================
@@ -113,12 +157,11 @@ detector = None
 @app.on_event("startup")
 def startup_event():
     global detector
-
-    print("[Singularity API] Loading image detector...")
+    logger.info("Loading image detector...")
 
     detector = load_detector()
 
-    print("[Singularity API] Detector loaded successfully.")
+    logger.info("Detector loaded successfully.")
 
 
 # ============================================================
@@ -137,6 +180,25 @@ ALLOWED_EXTENSIONS = {
 def is_allowed_image(filename: str) -> bool:
     suffix = Path(filename).suffix.lower()
     return suffix in ALLOWED_EXTENSIONS
+
+
+def verify_image_file(image_path: Path) -> None:
+    """
+    Ensure the uploaded file is a real, readable image before inference.
+    """
+    try:
+        with Image.open(image_path) as image:
+            image.verify()
+    except UnidentifiedImageError as error:
+        raise HTTPException(
+            status_code=400,
+            detail="Uploaded file is not a valid image."
+        ) from error
+    except Exception as error:
+        raise HTTPException(
+            status_code=400,
+            detail="Uploaded image could not be processed."
+        ) from error
 
 
 def safe_filename(original_filename: str) -> str:
@@ -235,8 +297,13 @@ def health():
     }
 
 
+# Maximum upload size (bytes). Default 10 MB, configurable via `MAX_UPLOAD_SIZE_BYTES`.
+MAX_UPLOAD_SIZE_BYTES = int(os.getenv("MAX_UPLOAD_SIZE_BYTES", 10 * 1024 * 1024))
+
+
 @app.post("/predict")
-async def predict(file: UploadFile = File(...)):
+@limiter.limit(RATE_LIMIT)
+async def predict(request: Request, file: UploadFile = File(...), x_api_key: str | None = Header(None)):
     """
     Upload an image and receive:
         - real/fake prediction
@@ -252,10 +319,22 @@ async def predict(file: UploadFile = File(...)):
             detail="Detector is not loaded."
         )
 
+    # API key enforcement (if keys are configured)
+    if ALLOWED_API_KEYS:
+        if not x_api_key or x_api_key not in ALLOWED_API_KEYS:
+            logger.warning("Unauthorized request from %s", request.client.host if request.client else "unknown")
+            raise HTTPException(status_code=401, detail="Missing or invalid API key")
     if file.filename is None:
         raise HTTPException(
             status_code=400,
             detail="Uploaded file has no filename."
+        )
+    # Basic content-type validation
+    content_type = (file.content_type or "").lower()
+    if not content_type.startswith("image/"):
+        raise HTTPException(
+            status_code=400,
+            detail="Uploaded file is not an image."
         )
 
     if not is_allowed_image(file.filename):
@@ -264,12 +343,43 @@ async def predict(file: UploadFile = File(...)):
             detail=f"Unsupported file type. Allowed: {sorted(ALLOWED_EXTENSIONS)}"
         )
 
+    # Optional: check Content-Length header when available
+    content_length = request.headers.get("content-length")
+    if content_length:
+        try:
+            length = int(content_length)
+            if length > MAX_UPLOAD_SIZE_BYTES:
+                raise HTTPException(
+                    status_code=413,
+                    detail=f"Uploaded file is too large (>{MAX_UPLOAD_SIZE_BYTES} bytes)."
+                )
+        except ValueError:
+            # ignore malformed header and fall back to on-disk check below
+            pass
+
     filename = safe_filename(file.filename)
     upload_path = UPLOAD_DIR / filename
 
     try:
+        # Stream file to disk
         with open(upload_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
+
+        verify_image_file(upload_path)
+
+        # Verify on-disk size as a last resort
+        file_size = upload_path.stat().st_size
+        if file_size > MAX_UPLOAD_SIZE_BYTES:
+            # remove partially written file
+            try:
+                upload_path.unlink()
+            except Exception:
+                pass
+
+            raise HTTPException(
+                status_code=413,
+                detail=f"Uploaded file is too large (>{MAX_UPLOAD_SIZE_BYTES} bytes)."
+            )
 
         raw_result = predict_image_with_gradcam(
             detector=detector,
@@ -288,8 +398,23 @@ async def predict(file: UploadFile = File(...)):
 
         return response
 
+    except HTTPException:
+        # Re-raise known HTTP exceptions
+        if upload_path.exists():
+            try:
+                upload_path.unlink()
+            except Exception:
+                pass
+        raise
+
     except Exception as error:
-        traceback.print_exc()
+        logger.exception("Prediction failed")
+
+        if upload_path.exists():
+            try:
+                upload_path.unlink()
+            except Exception:
+                pass
 
         raise HTTPException(
             status_code=500,
@@ -301,4 +426,3 @@ async def predict(file: UploadFile = File(...)):
 
     finally:
         await file.close()
-#Finish

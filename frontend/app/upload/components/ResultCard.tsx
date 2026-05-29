@@ -12,10 +12,10 @@ const MEDIUM_TRUST_THRESHOLD = 45;
 const HIGH_FAKE_PROBABILITY = 0.75;
 
 /**
- * NOTE:
- * Replace with process.env.NEXT_PUBLIC_API_URL in production
+ * API base URL
+ * Uses `NEXT_PUBLIC_API_URL` when available; falls back to local backend.
  */
-const API_BASE_URL = "http://127.0.0.1:8000";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
 /**
  * Types
