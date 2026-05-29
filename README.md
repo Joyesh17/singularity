@@ -28,7 +28,13 @@ python -m venv venv
 # macOS / Linux
 # source venv/bin/activate
 pip install -r requirements.txt
-uvicorn api:app --reload --host 127.0.0.1 --port 8000
+# Start the backend (make sure you're in the `backend` folder):
+# Note the `:app` suffix — Uvicorn requires the format "<module>:<attribute>".
+.\n+# Windows PowerShell (from backend/):
+.\venv\Scripts\python.exe -m uvicorn api:app --reload --host 127.0.0.1 --port 8000
+
+# If you run from the project root, use the package-style import:
+# .\backend\venv\Scripts\python.exe -m uvicorn backend.api:app --reload --host 127.0.0.1 --port 8000
 ```
 
 Health: http://127.0.0.1:8000/health
@@ -64,7 +70,7 @@ MODEL_ARTIFACT_DIR=backend/ml_artifacts/efficientnet_b0_mvp
 
 ## Model artifacts
 
-Place model files under `backend/ml_artifacts/efficientnet_b0_mvp/` with the expected names:
+Place model files under `backend/ml_artifacts/efficientnet_b0_mvp/` with the expected names (these are intentionally not tracked in git):
 
 - `model.pth` (weights)
 - `model_config.json`
@@ -82,6 +88,26 @@ To stop tracking a model already committed:
 git rm --cached backend/ml_artifacts/efficientnet_b0_mvp/model.pth
 git commit -m "Stop tracking model weights; add to .gitignore"
 ```
+
+Troubleshooting: If the backend fails on startup with a message like:
+
+```
+FileNotFoundError: Model file not found: backend/ml_artifacts/efficientnet_b0_mvp/model.pth
+```
+
+Then either:
+
+- Place the required model files in `backend/ml_artifacts/efficientnet_b0_mvp/`, or
+- Set the environment variable `MODEL_ARTIFACT_DIR` to point to a folder that contains the four required files.
+
+Example (PowerShell):
+
+```powershell
+$env:MODEL_ARTIFACT_DIR = 'D:\path\to\artifacts\efficientnet_b0_mvp'
+.\venv\Scripts\python.exe -m uvicorn api:app --reload --host 127.0.0.1 --port 8000
+```
+
+The backend will now start even if the model is missing; requests to `/predict` will return a 500 with a helpful message until the artifacts are available.
 
 ## CI / Deployment recommendations
 

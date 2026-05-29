@@ -159,9 +159,31 @@ def startup_event():
     global detector
     logger.info("Loading image detector...")
 
-    detector = load_detector()
-
-    logger.info("Detector loaded successfully.")
+    # Try to load model artifacts. Allow overriding artifact dir via
+    # the `MODEL_ARTIFACT_DIR` environment variable so users can place
+    # artifacts anywhere (useful for contributors who keep them outside
+    # of the repository).
+    try:
+        artifact_dir = os.getenv("MODEL_ARTIFACT_DIR")
+        detector = load_detector(artifact_dir) if artifact_dir else load_detector()
+        logger.info("Detector loaded successfully.")
+    except FileNotFoundError as exc:
+        # Don't crash the whole app on missing model files — provide a
+        # helpful log message and keep the server running so health
+        # checks and other static endpoints still work.
+        logger.error("Model artifacts not found: %s", exc)
+        logger.error(
+            "Model artifacts are required to run predictions. Place the files:\\n"
+            "  backend/ml_artifacts/efficientnet_b0_mvp/model.pth\\n"
+            "  backend/ml_artifacts/efficientnet_b0_mvp/model_config.json\\n"
+            "  backend/ml_artifacts/efficientnet_b0_mvp/class_map.json\\n"
+            "  backend/ml_artifacts/efficientnet_b0_mvp/inference_info.json\\n"
+            "Or set the MODEL_ARTIFACT_DIR environment variable to a valid folder."
+        )
+        detector = None
+    except Exception:
+        logger.exception("Failed to load detector; continuing without model.")
+        detector = None
 
 
 # ============================================================
