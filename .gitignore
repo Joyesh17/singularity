@@ -31,9 +31,13 @@ yarn-error.log*
 !.vscode/settings.json
 
 # Machine learning artifacts and model weights (avoid large binary blobs in repo)
-backend/ml_artifacts/
-**/model.pth
+backend/ml_artifacts/*
+!backend/ml_artifacts/efficientnet_b0_mvp/
+backend/ml_artifacts/efficientnet_b0_mvp/*
+!backend/ml_artifacts/efficientnet_b0_mvp/model.pth
+!backend/ml_artifacts/efficientnet_b0_mvp/model_config.json
+!backend/ml_artifacts/efficientnet_b0_mvp/class_map.json
+!backend/ml_artifacts/efficientnet_b0_mvp/inference_info.json
 **/model.pt
-*.pth
 *.pt
 *.ckpt
