@@ -20,22 +20,73 @@ Prerequisites:
 
 1. Backend
 
-```bash
-cd backend
-python -m venv venv
-# Windows PowerShell
-.\venv\Scripts\Activate.ps1
-# macOS / Linux
-# source venv/bin/activate
-pip install -r requirements.txt
-# Start the backend (make sure you're in the `backend` folder):
-# Note the `:app` suffix — Uvicorn requires the format "<module>:<attribute>".
-.\n+# Windows PowerShell (from backend/):
-.\venv\Scripts\python.exe -m uvicorn api:app --reload --host 127.0.0.1 --port 8000
+### First-time backend setup
 
-# If you run from the project root, use the package-style import:
-# .\backend\venv\Scripts\python.exe -m uvicorn backend.api:app --reload --host 127.0.0.1 --port 8000
+Run these steps the first time you set up the project on a new PC.
+
+1. Open PowerShell and go to the backend folder:
+
+```powershell
+cd backend
 ```
+
+2. Create a virtual environment:
+
+```powershell
+python -m venv venv
+```
+
+3. Activate the virtual environment:
+
+```powershell
+.\venv\Scripts\Activate.ps1
+```
+
+If PowerShell blocks script execution, run this once in an Administrator PowerShell, then try activation again:
+
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+```
+
+4. Install the backend dependencies:
+
+```powershell
+pip install -r requirements.txt
+```
+
+5. Make sure the model artifacts exist in this folder:
+
+```text
+backend/ml_artifacts/efficientnet_b0_mvp/
+```
+
+Required files:
+
+- `model.pth`
+- `model_config.json`
+- `class_map.json`
+- `inference_info.json`
+
+6. Start the backend:
+
+```powershell
+.\venv\Scripts\python.exe -m uvicorn api:app --reload --host 127.0.0.1 --port 8000
+```
+
+If you run the command from the project root instead of `backend/`, use:
+
+```powershell
+.\backend\venv\Scripts\python.exe -m uvicorn backend.api:app --reload --host 127.0.0.1 --port 8000
+```
+
+7. Verify it is running:
+
+```text
+http://127.0.0.1:8000/health
+http://127.0.0.1:8000/docs
+```
+
+Quick summary: `venv` creates an isolated Python environment, `Activate.ps1` turns it on, `pip install -r requirements.txt` installs dependencies, and `uvicorn api:app` starts the FastAPI server.
 
 Health: http://127.0.0.1:8000/health
 Docs: http://127.0.0.1:8000/docs
